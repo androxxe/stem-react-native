@@ -1,0 +1,18 @@
+import Home from './Home'
+import Login from './Login'
+import Daftar from './Daftar'
+import LupaPassword from './LupaPassword'
+import Profile from './Profile'
+import UbahProfil from './Profile/ubahProfil'
+import UbahPassword from './Profile/ubahPassword'
+import Kelas from './Kelas'
+import Trail from './Trail'
+import TrailDetail from './Trail/detail'
+import TrailSaya from './Trail/saya'
+import TrailMap from './Trail/map'
+import KelasDetail from './KelasDetail'
+import KelasTambah from './KelasTambah'
+import TaskQuestion from './Task/question'
+import Splash from './Splash'
+
+export { Home, Login, Daftar, LupaPassword, Profile, Kelas, Trail, TrailDetail, KelasDetail, TrailSaya, TrailMap, TaskQuestion, Splash, UbahProfil, UbahPassword, KelasTambah }
