@@ -47,7 +47,8 @@ const Splash = ({navigation}) => {
         <View style={{ 
             flex: 1,
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            backgroundColor: 'white'
         }}>
             <AutoHeightImage source={logoSingleText} width={width / 1.5} />
             <ActivityIndicator color={colors.primary} size="large" style={{ 

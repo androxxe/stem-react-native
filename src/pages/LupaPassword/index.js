@@ -17,7 +17,7 @@ const index = ({navigation}) => {
     const successDispatcher = useToastSuccessDispatch()
     const errorDispatcher = useToastErrorDispatch()
 
-    const handleSubtit = async (values) => {
+    const handleFormSubmit = async (values) => {
         setIsLoading(true)
         const {status, message, data} = await axiosPost({dispatch, route: 'user/lupa-password', data: values, isToast: false})
         if(status == 1){
@@ -35,9 +35,9 @@ const index = ({navigation}) => {
     const PesanKonfirmasi = () => {
         if(pesan){
             return (
-                <Card containerStyle={{ backgroundColor: pesanSukses ? colors.success : colors.error, marginBottom:20 }} >
+                <View style={{ padding: 10, marginHorizontal: 6, marginTop: 20, borderRadius: 10, backgroundColor: pesanSukses ? colors.success : colors.error, marginBottom:20 }} >
                     <Text style={{ color: colors.white }}>{pesan}</Text>
-                </Card>
+                </View>
             )
         }else{
             return null
@@ -46,7 +46,7 @@ const index = ({navigation}) => {
 
     return (
         <View style={styles.container}>
-            <Card>
+            <Card containerStyle={{ borderRadius: 20 }}>
                 <Card.Title>LUPA PASSWORD</Card.Title>
                 <Card.Divider/>
                 <View style={{ alignItems:'center' }}>
@@ -59,7 +59,7 @@ const index = ({navigation}) => {
                 <Formik 
                     initialValues={{email: '',}}
                     validationSchema={validasi}
-                    onSubmit={async(values) => await handleSubtit(values)}
+                    onSubmit={async(values) => await handleFormSubmit(values)}
                 >
                     {({handleChange, handleBlur, errors, values, touched, handleSubmit}) => (
                         <View>

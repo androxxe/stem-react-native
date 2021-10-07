@@ -130,17 +130,11 @@ const index = ({ navigation }) => {
                             </View>
                         )}
                     </Formik>
-                    <View style={{ marginVertical: 10, alignItems: 'flex-end' }}>
-                        <TouchableOpacity onPress={() => navigation.navigate('LupaPassword')}>
-                            <Text style={{ color: colors.primary }}>Lupa password?</Text>
+                    <View style={{ marginVertical: 10, alignItems: 'center' }}>
+                        <TouchableOpacity onPress={() => navigation.goBack()}>
+                            <Text style={{ color: colors.primary }}>Sudah punya akun?</Text>
                         </TouchableOpacity>
                     </View>
-                    <Card.Divider/>
-                    <Button
-                        title="Login"
-                        type="outline"
-                        onPress={() => navigation.navigate('Login')}
-                    />
                 </Card>
             </ScrollView>
         </View>

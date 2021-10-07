@@ -86,6 +86,12 @@ const Profile = ({navigation}) => {
             onPress: () => navigation.navigate('UbahPassword')
         },
         {
+            title: 'Trail Favorit',
+            icon: 'route',
+            iconType: 'font-awesome-5',
+            onPress: () => navigation.navigate('TrailFavorit')
+        },
+        {
             title: 'Logout',
             icon: 'sign-out-alt',
             iconType: 'font-awesome-5',
@@ -132,7 +138,12 @@ const Profile = ({navigation}) => {
                         <ListItem key={i} bottomDivider onPress={item.onPress}> 
                             <Icon
                                 name={item.icon}
-                                type={item.iconType}    
+                                type={item.iconType}
+                                color={colors.primary}    
+                                size={18}
+                                containerStyle={{ 
+                                    marginVertical: 4
+                                }}
                             />
                             <ListItem.Content>
                                 <ListItem.Title>{item.title}</ListItem.Title>

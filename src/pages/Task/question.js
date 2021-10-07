@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { View, ActivityIndicator, ScrollView, Dimensions, StyleSheet, Modal, Pressable, Alert } from 'react-native'
+import { View, ActivityIndicator, ScrollView, Dimensions, StyleSheet, Modal, Pressable, Alert, TouchableOpacity } from 'react-native'
 import AutoHeightImage from 'react-native-auto-height-image'
-import { Button, Card, colors, Header, Icon, Avatar, Input, Text, CheckBox, Badge } from 'react-native-elements'
+import { Button, Card, colors, Header, Icon, Avatar, Input, Text, CheckBox, Badge, Image } from 'react-native-elements'
 import { RFValue } from 'react-native-responsive-fontsize'
 import { LeftBackPage } from '../../components/atoms'
 import { variable } from '../../utils'
@@ -11,6 +11,7 @@ import { axiosPost } from '../../functions'
 import { useDispatch, useSelector } from 'react-redux'
 import { useToastErrorDispatch } from '../../hooks'
 import { setLoadingGlobal } from '../../redux'
+import ImageZoom from 'react-native-image-pan-zoom';
 
 const Answer = ({setLoadingGlobal, trailTask, dispatch, user, navigation, errorDispatch, totalSoalFillTheBlank}) => {
     if(trailTask.task.tipe_jawaban == 1){
@@ -26,7 +27,7 @@ const Answer = ({setLoadingGlobal, trailTask, dispatch, user, navigation, errorD
                     <>
                         <Input
                             placeholder="Isi jawaban disini..."
-                            label="Jawaban"
+                            label="Jawaban Eksak"
                             style={styles.textInput}
                             disabled={trailTask.task.task_answer.length > 0 ? true : false}
                             onChangeText={handleChange('exact_value_answer')}
@@ -221,14 +222,10 @@ const handleSubmitForm = async ({ setLoadingGlobal, dispatch, trailTask, values,
     })
     dispatch(setLoadingGlobal(false))
 
-    alert(JSON.stringify(response))
-    if(response.status == 1){
-        setTimeout(() => {
-            navigation.goBack();
-        }, 2000)
-    } else {
-
-    }
+    // alert(JSON.stringify(response))
+    setTimeout(() => {
+        navigation.goBack();
+    }, 1000)
 }
 
 const Question = ({ navigation, route }) => {
@@ -310,6 +307,42 @@ const Question = ({ navigation, route }) => {
             onPress={() => handleModalHint({val, isTampil, index})} />
     }
 
+    const KunciJawaban = () => {
+        if(trailTask.task.tipe_jawaban == 1){
+            return <Text style={styles.question}>
+                { trailTask.task.exact_value_answer }
+            </Text>
+        } else if (trailTask.task.tipe_jawaban == 2){
+            return trailTask.task.task_multiple_choice.map((val, index) => {
+                if(val.is_true == 1){
+                    return <View key={`list_${index}`}>
+                        <CheckBox
+                            center
+                            title={ val.nilai }
+                            iconType='font-awesome'
+                            checkedIcon='check'
+                            disabled={trailTask.task.task_answer.length > 0 ? true : false}
+                            checked={true}
+                            containerStyle={{ 
+                                alignItems: 'flex-start'
+                            }}
+                        />
+                    </View>
+                }
+            })
+        } else if (trailTask.task.tipe_jawaban == 3){
+            return <Text style={styles.question}>
+                -
+            </Text>
+        } else if (trailTask.task.tipe_jawaban == 4){
+            return <Text style={styles.question}>
+                -
+            </Text>
+        }
+
+        return null
+    }
+
     const ModalHint = () => {
         return <View style={styles.centeredView}>
             <Modal
@@ -376,13 +409,17 @@ const Question = ({ navigation, route }) => {
                     }}
                 />
                 <ScrollView>
-                    <AutoHeightImage
-                        width={width}
-                        source={{ uri: `${variable.storage}${trailTask.task.foto}` }}
-                        style={{ 
-                            backgroundColor: 'white'
-                        }}
-                    />
+                    <TouchableOpacity onPress={() => navigation.navigate('ImagePanZoom', {
+                        image: `${variable.storage}${trailTask.task.foto}`
+                    })}>
+                        <AutoHeightImage
+                            width={width}
+                            source={{ uri: `${variable.storage}${trailTask.task.foto}` }}
+                            style={{ 
+                                backgroundColor: 'white'
+                            }}
+                        />
+                    </TouchableOpacity>
                     <Card containerStyle={{ 
                         borderRadius: 20,
                         marginTop: -30
@@ -391,7 +428,7 @@ const Question = ({ navigation, route }) => {
                             borderRadius: 20,
                             padding: 6,
                             position: 'absolute',
-                            marginTop: -40,
+                            marginTop: -36,
                             backgroundColor: colors.primary,
                             paddingHorizontal: 14,
                             right: 0
@@ -442,6 +479,22 @@ const Question = ({ navigation, route }) => {
                         <Text></Text>
                         <Answer setLoadingGlobal={setLoadingGlobal} totalSoalFillTheBlank={totalSoalFillTheBlank} errorDispatch={errorDispatch} navigation={navigation} user={user} dispatch={dispatch} trailTask={trailTask} />
                     </Card>
+                    { trailTask.task.task_answer.length > 0 ?
+                        <Card containerStyle={{ borderRadius: 20 }}>
+                            <Text style={styles.questionTitle}>Kunci Jawaban</Text>
+                            <KunciJawaban />
+                            <View style={{ marginTop: 20 }} />
+                            <Text style={styles.questionTitle}>Skor Kamu</Text>
+                            <Text style={styles.question}>
+                                { trailTask.task.task_answer[0].score != null ? 
+                                    trailTask.task.task_answer[0].score == 0 ?
+                                        <Text style={{ color: colors.error, fontWeight: 'bold' }}>{ trailTask.task.task_answer[0].score }</Text>
+                                    : trailTask.task.task_answer[0].score == trailTask.task.score ?
+                                    <Text style={{ color: colors.success, fontWeight: 'bold' }}>{ trailTask.task.task_answer[0].score }</Text> : trailTask.task.task_answer[0].score
+                                : 'Belum diperiksa' }
+                            </Text>
+                        </Card>
+                    : null }
                     <Card containerStyle={{ borderRadius: 20, marginBottom: 20 }}>
                         <Text style={styles.questionTitle}>Author</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}>

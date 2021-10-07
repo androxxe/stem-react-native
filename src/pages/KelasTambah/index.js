@@ -57,8 +57,8 @@ const KelasTambah = ({ navigation, route }) => {
                     {({handleChange, handleBlur, handleSubmit, values, errors, touched}) => (
                         <>
                             <Input
-                                placeholder="Nama"
-                                label="Nama"
+                                placeholder="Masukkan kode kelas.."
+                                label="Kode Kelas"
                                 leftIcon={{ type: 'font-awesome-5', name: 'hashtag' }}
                                 style={styles.textInput}
                                 onChangeText={handleChange('kodeKelas')}

@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Login, Daftar, LupaPassword, Profile, Kelas, Trail, TrailDetail, KelasDetail, TrailSaya, TrailMap, TaskQuestion, Splash, UbahProfil, UbahPassword, KelasTambah } from '../pages'
+import { Home, Login, Daftar, LupaPassword, Profile, Kelas, Trail, TrailDetail, KelasDetail, TrailSaya, TrailMap, TaskQuestion, Splash, UbahProfil, UbahPassword, KelasTambah, TrailFavorit, ImagePanZoom } from '../pages'
 import { Icon } from 'react-native-elements/dist/icons/Icon';
 import { colors } from 'react-native-elements';
 
@@ -129,10 +129,12 @@ const MainStack = () => {
                 <Stack.Screen name="LupaPassword" component={LupaPassword} options={{ headerShown: false }}/>
                 <Stack.Screen name="TrailDetail" component={TrailDetail} options={{ headerShown: false }}/>
                 <Stack.Screen name="TrailSaya" component={TrailSaya} options={{ headerShown: false }}/>
+                <Stack.Screen name="TrailFavorit" component={TrailFavorit} options={{ headerShown: false }}/>
                 <Stack.Screen name="TrailMap" component={TrailMap} options={{ headerShown: false }}/>
                 <Stack.Screen name="TaskQuestion" component={TaskQuestion} options={{ headerShown: false }}/>
                 <Stack.Screen name="UbahProfil" component={UbahProfil} options={{ headerShown: false }}/>
                 <Stack.Screen name="UbahPassword" component={UbahPassword} options={{ headerShown: false }}/>
+                <Stack.Screen name="ImagePanZoom" component={ImagePanZoom} options={{ headerShown: false }}/>
             </Stack.Navigator>
         </NavigationContainer>
     )

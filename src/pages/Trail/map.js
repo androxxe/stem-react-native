@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, Dimensions, StyleSheet, Modal, Pressable, ActivityIndicator, Alert } from 'react-native'
-import { colors, Header, SpeedDial, ListItem, BottomSheet, Button, Avatar } from 'react-native-elements'
-import MapView, { Marker } from 'react-native-maps'
+import { colors, Header, SpeedDial, ListItem, BottomSheet, Button, Avatar, Icon } from 'react-native-elements'
+import MapView, { Marker, Polyline } from 'react-native-maps'
 import { RFValue } from 'react-native-responsive-fontsize'
 import { LeftBackPage } from '../../components/atoms'
-import { axiosGet, requestLocation } from '../../functions'
+import { axiosGet, axiosPost, requestLocation } from '../../functions'
 import { useDispatch, useSelector } from 'react-redux'
 import { getCenter } from 'geolib'
 import { variable } from '../../utils'
-import user from '../../redux/user'
 import { useToastErrorDispatch } from '../../hooks'
+import { LateTime, MarkerGreen, MarkerOrange, OnTime } from '../../assets/images'
+import { TrailSaya } from '..'
+import { setLoadingGlobal } from '../../redux'
+import AutoHeightImage from 'react-native-auto-height-image'
 
-const SpeedDialComponent = ({ setIsSpeedDialOpen, isSpeedDialOpen, showModalTask, setShowModalTask}) => {
+const SpeedDialComponent = ({ setIsSpeedDialOpen, isSpeedDialOpen, showModalTask, setShowModalTask, fetchPengerjaanTrail}) => {
     return (
         <SpeedDial
             isOpen={isSpeedDialOpen}
@@ -29,8 +32,10 @@ const SpeedDialComponent = ({ setIsSpeedDialOpen, isSpeedDialOpen, showModalTask
                 />
             <SpeedDial.Action
                 icon={{ name: 'redo', color: '#fff', type: 'font-awesome-5' }}
-                // title="Ulang"
-                onPress={() => console.log('Delete Something')}
+                onPress={() => {
+                    fetchPengerjaanTrail()
+                    setIsSpeedDialOpen(!isSpeedDialOpen)
+                }}
                 color={colors.primary}
             />
         </SpeedDial>
@@ -38,11 +43,14 @@ const SpeedDialComponent = ({ setIsSpeedDialOpen, isSpeedDialOpen, showModalTask
 }
 const map = ({ navigation, route}) => {
     const dispatch = useDispatch()
-    const [trail, setTrail] = useState(null)
+    const [trail, setTrail] = useState({})
     const [title, setTitle] = useState('Task')
     const [isLoading, setIsLoading] = useState(true)
     const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false)
     const [isVisibleBottomSheetTask, setIsVisibleBottomSheetTask] = useState(false)
+    const [isVisibleModalKumpulkan, setIsVisibleModalKumpulkan] = useState(false)
+    const [dataModalKumpulkan, setDataModalKumpulkan] = useState({})
+    const [jumlahTaskDikerjakan, setJumlahTaskDikerjakan] = useState(0)
     const [center, setCenter] = useState(false)
     const [showModalTask, setShowModalTask] = useState(false)
     const [dataBottomSheetMask, setDataBottomSheetMask] = useState(false)
@@ -60,6 +68,29 @@ const map = ({ navigation, route}) => {
             })()
         });
     }, [])
+
+    useEffect(() => {
+        if(location.status == true && Object.keys(trail).length > 0){
+            setCenter(getCenter(trail.trail_task.map(val => {
+                return {
+                    latitude: val.task.latitude,
+                    longitude: val.task.longitude,
+                }
+            })))
+        }
+    }, [location, trail])
+
+    useEffect(() => {
+        if(Object.keys(trail).length > 0){
+            let tempJumlah = 0
+            trail.trail_task.map(val => {
+                if(val.task.task_answer.length > 0){
+                    tempJumlah++
+                }
+            })
+            setJumlahTaskDikerjakan(tempJumlah)
+        }
+    }, [trail])
 
     const fetchPengerjaanTrail = async () => {
         setIsLoading(true)
@@ -81,17 +112,6 @@ const map = ({ navigation, route}) => {
         setTitle(response.data.nama)
         setIsLoading(false)
     }
-
-    useEffect(() => {
-        if(location.status == true && trail){
-            setCenter(getCenter(trail.trail_task.map(val => {
-                return {
-                    latitude: val.task.latitude,
-                    longitude: val.task.longitude,
-                }
-            })))
-        }
-    }, [location])
 
     const handleClickMarker = (val) => {
         setIsVisibleBottomSheetTask(true)
@@ -163,6 +183,31 @@ const map = ({ navigation, route}) => {
         }
     }
 
+    const handleKumpulkan = async () => {
+        dispatch(setLoadingGlobal(true))
+        const response = await axiosPost({dispatch, route: 'trail/kumpulkan', data: {
+            id_trail_user: trail.trail_user[0].id_trail_user
+        }, headers: {
+            token: user.token
+        }})
+        if(response.status == 1){
+            setIsVisibleModalKumpulkan(true)
+            if(response.data.status_telat == 1){
+                setDataModalKumpulkan({
+                    statusTelat: 1,
+                    message: response.data.message
+                })
+            } else {
+                setDataModalKumpulkan({
+                    statusTelat: 0,
+                    message: response.data.message
+                })
+            }
+        }
+        await fetchPengerjaanTrail()
+        dispatch(setLoadingGlobal(false))
+    }
+
     const ModalListTask = () => {
         return (
             <Modal
@@ -210,7 +255,8 @@ const map = ({ navigation, route}) => {
             <ActivityIndicator size="large" color={colors.primary} />
         </View>
     }
-    if(trail){
+
+    if(Object.keys(trail).length > 0){
         return (
             <View style={styles.container}>
                 <Header 
@@ -239,26 +285,35 @@ const map = ({ navigation, route}) => {
                             latitudeDelta: 0.09,
                             longitudeDelta: 0.09,
                         }}
-                    >
-                        {trail.trail_task.map((val, index) => 
-                            <Marker
-                                key={index}
-                                coordinate={{ 
-                                    latitude: val.task.latitude,
-                                    longitude: val.task.longitude,
-                                }}
-                                title={`#${val.sequence} ${val.task.judul}`}
-                                onPress={() => handleClickMarker(val)}
+                    >   
+                        { trail.is_sequence == 1 ?
+                            <Polyline
+                                coordinates={trail.trail_task.map(val => {
+                                    return {
+                                        latitude: val.task.latitude,
+                                        longitude: val.task.longitude,
+                                    }
+                                })}
+                                strokeColor={colors.primary}
+                                strokeWidth={3}
+                                lineDashPattern={[10]}
                             />
-                        )}
+                        : null }
+                        {trail.trail_task.map((val, index) => (
+                            <View key={index}>
+                                <Marker
+                                    icon={val.task.task_answer.length > 0 ? MarkerGreen : MarkerOrange}
+                                    coordinate={{ 
+                                        latitude: val.task.latitude,
+                                        longitude: val.task.longitude,
+                                    }}
+                                    title={`#${val.sequence} ${val.task.judul}`}
+                                    onPress={() => handleClickMarker(val)}
+                                />
+                            </View>
+                        ))}
                     </MapView>
                 )}
-                <SpeedDialComponent
-                    isSpeedDialOpen={isSpeedDialOpen}
-                    setIsSpeedDialOpen={setIsSpeedDialOpen}
-                    showModalTask={showModalTask}
-                    setShowModalTask={setShowModalTask}
-                />
                 <ModalListTask />
                 <BottomSheet
                     isVisible={isVisibleBottomSheetTask}
@@ -288,6 +343,72 @@ const map = ({ navigation, route}) => {
                         </View>
                     : null }
                 </BottomSheet>
+                { trail.trail_user[0].status == 0 ?
+                    trail.trail_task.length == jumlahTaskDikerjakan ?
+                        <Button onPress={handleKumpulkan} title="Kumpulkan" buttonStyle={{ 
+                                marginBottom: 0,
+                                height: 50,
+                                backgroundColor: colors.success
+                            }}
+                            icon={
+                                <Icon
+                                    name="check"
+                                    type="font-awesome-5"
+                                    size={15}
+                                    color="white"
+                                    style={{ marginRight: 12 }}
+                                />
+                            }
+                        />
+                    : null 
+                : (
+                    <Button title="Sudah selesai" disabled buttonStyle={{ 
+                        height: 50,
+                        backgroundColor: colors.success,
+                    }}
+                    icon={
+                        <Icon
+                            name="check"
+                            type="font-awesome-5"
+                            size={15}
+                            color="white"
+                            style={{ marginRight: 12 }}
+                        />
+                    }
+                />
+                        
+                )}
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={isVisibleModalKumpulkan}
+                    onRequestClose={() => {
+                        setIsVisibleModalKumpulkan(!isVisibleModalKumpulkan);
+                    }}
+                >
+                    <View style={styles.centeredView}>
+                    <View style={{ ...styles.modalView, padding: 20 }}>
+                        <AutoHeightImage width={width / 2.5} source={dataModalKumpulkan.statusTelat == 1 ? LateTime : OnTime} />
+                        <Text style={styles.modalText}>{ dataModalKumpulkan.message }</Text>
+                        <Pressable
+                            style={[styles.button, styles.buttonClose]}
+                            onPress={() => setIsVisibleModalKumpulkan(!isVisibleModalKumpulkan)}
+                        >
+                            <Text style={styles.textStyle}>Tutup</Text>
+                        </Pressable>
+                    </View>
+                    </View>
+                </Modal>
+                <SpeedDialComponent
+                    fetchPengerjaanTrail={fetchPengerjaanTrail}
+                    isSpeedDialOpen={isSpeedDialOpen}
+                    setIsSpeedDialOpen={setIsSpeedDialOpen}
+                    showModalTask={showModalTask}
+                    setShowModalTask={setShowModalTask}
+                    containerStyle={{ 
+                        marginBottom: 60
+                    }}
+                />
             </View>
         )
     } else {
@@ -341,7 +462,10 @@ const styles = StyleSheet.create({
         textAlign: "center"
     },
     modalText: {
-        marginBottom: 15,
-        textAlign: "center"
+        marginVertical: 15,
+        textAlign: "center",
+        fontFamily: 'Poppins-Regular',
+        fontSize: RFValue(16, height),
+        marginTop: 40
     }
 })
