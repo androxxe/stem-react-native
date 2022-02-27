@@ -29,13 +29,13 @@ const ToastSuccess = () => {
       setTimeout(() => {
         Animated.timing(animOpacity, {
           toValue: 0,
-          duration: 800,
+          duration: 500,
           useNativeDriver: true
         }).start();
 
         setTimeout(() => {
           dispatch(setToast({show: false}))
-        }, 800);
+        }, 500);
       }, toast.time);
     }
   }, [toast.show])

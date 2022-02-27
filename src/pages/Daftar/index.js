@@ -10,9 +10,11 @@ import { useDispatch } from 'react-redux'
 import { useToastErrorDispatch, useToastSuccessDispatch } from '../../hooks'
 import { axiosPost } from '../../functions'
 import { setLoadingGlobal, setToken, setUser } from '../../redux'
+import { RFValue } from 'react-native-responsive-fontsize'
 
 const index = ({ navigation }) => {
-    const {errors, setErrors} = useState(null)
+    const [errors, setErrors] = useState(null)
+    const [success, setSuccess] = useState(null)
     const dispatch = useDispatch()
     const successDispatcher = useToastSuccessDispatch()
     const errorDispatcher = useToastErrorDispatch()
@@ -25,28 +27,53 @@ const index = ({ navigation }) => {
 
     const handleButtonDaftar = async(values) => {
         dispatch(setLoadingGlobal(true))
-        const { data, status, message } = await axiosPost({dispatch, route: 'daftar/user', data: values})
+        const { data, status, message } = await axiosPost({dispatch, route: 'daftar/user', data: values, isToast: false})
         dispatch(setLoadingGlobal(false))
         if(status == 1){
-            navigation.navigate('Login')
+            // navigation.navigate('Login')
+            setSuccess(message)
             successDispatcher(dispatch, message)
+            return true
         } else {
+            errorDispatcher(dispatch, message)
             setErrors(data)
             errorDispatcher(dispatch, message)
+            return false
         }
+
     }
 
     const ErrorsAlert = () => {
         if(errors){
             return (
-                <View>
+                <View style={{ padding: 10, marginHorizontal: 6, marginTop: 20, borderRadius: 10, backgroundColor: colors.error, marginBottom:20 }}>
                     {
                         errors.map((value) => 
                         <View style={{ width: width }}>
-                            <Text>{value}</Text>
+                            <Text style={{ 
+                                fontFamily: 'Poppins-Regular', 
+                                color: 'white',
+                                fontSize: RFValue(16, height)
+                            }}>{value}</Text>
                         </View>
                         )
                     }
+                </View>
+            )
+        } else {
+            return null;
+        }
+    }
+
+    const SuccessAlert = () => {
+        if(success){
+            return (
+                <View style={{ padding: 10, marginHorizontal: 6, marginTop: 20, borderRadius: 10, backgroundColor: colors.success, marginBottom:20 }}>
+                    <Text style={{
+                        color: 'white',
+                        fontFamily: 'Poppins-Regular',
+                        fontSize: RFValue(16, height)
+                    }}>{ success }</Text>
                 </View>
             )
         }else{
@@ -61,8 +88,6 @@ const index = ({ navigation }) => {
                     borderRadius: 20,
                     marginBottom: 20
                 }}>
-                    <Card.Title>DAFTAR STEM</Card.Title>
-                    <Card.Divider/>
                     <View style={{ 
                         alignItems: 'center'
                     }}>
@@ -71,10 +96,23 @@ const index = ({ navigation }) => {
                             style={{ width: 100, height: 100, marginBottom:10 }}
                         />
                     </View>
+                    <Text style={{ 
+                        textAlign: 'center',
+                        fontFamily: 'Poppins-Bold',
+                        fontSize: RFValue(20, height),
+                        marginTop: 20,
+                        marginBottom: 20
+                    }}>Register Akun STEM</Text>
                     <ErrorsAlert/>
+                    <SuccessAlert />
                     <Formik
                         initialValues={{ email: '', password: '', nama: '', password_konfirmasi: '' }}
-                        onSubmit={async(values) => await handleButtonDaftar(values)}
+                        onSubmit={async(values, {resetForm}) => {
+                            const status = await handleButtonDaftar(values)
+                            if(status == true){
+                                resetForm()
+                            }
+                        }}
                         validationSchema={validasi}
                     >
                         {({handleChange, handleBlur, handleSubmit, values, errors, touched}) => (
@@ -90,7 +128,7 @@ const index = ({ navigation }) => {
                                     errorMessage={errors.nama && touched.nama ? errors.nama : ''}
                                 />
                                 <Input
-                                    placeholder="example@gmail.com"
+                                    placeholder="emailkamu@gmail.com"
                                     label="Email"
                                     leftIcon={{ type: 'font-awesome-5', name: 'envelope' }}
                                     style={styles.textInput}
@@ -142,14 +180,13 @@ const index = ({ navigation }) => {
 }
 export default index
 
-const {width, height} = Dimensions.get('screen')
+const {width, height} = Dimensions.get('window')
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         width,
         justifyContent: 'center',
-        marginTop: Constants.statusBarHeight,
     },
     textInput: {
         marginHorizontal: 10

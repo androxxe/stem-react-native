@@ -12,12 +12,12 @@ const index = () => {
         return (
             <View style={styles.loaderContainer}>
                 <View style={{ 
-                    height: 200,
-                    width: 200,
+                    height: 100,
+                    width: 100,
                     overflow: 'hidden',
                     borderRadius: 50,
                 }}>
-                <AutoHeightImage source={Loading} width={200} />
+                <AutoHeightImage source={Loading} width={100} />
                 </View>
             </View> 
             )

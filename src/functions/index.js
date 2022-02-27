@@ -1,5 +1,5 @@
 import axiosPost from './axiosPost'
 import axiosGet from './axiosGet'
-import requestLocation from './requestLocation'
+import { requestLocation, hasLocationPermission } from './requestLocation'
 
-export { axiosPost, axiosGet, requestLocation }
+export { axiosPost, axiosGet, requestLocation, hasLocationPermission }

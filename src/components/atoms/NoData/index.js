@@ -9,7 +9,7 @@ const NoData = ({title, subtitle}) => {
             display: 'flex',
             justifyContent: 'flex-start',
             alignItems: 'center',
-            paddingHorizontal: 12
+            paddingHorizontal: 12,
         }}>    
             <Icon
                 name='slash'

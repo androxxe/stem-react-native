@@ -1,34 +1,92 @@
-import * as Location from 'expo-location';
 import { useToastErrorDispatch } from '../hooks';
-import { setLocation, setStatus } from '../redux'
+import { setLocation, setStatusPermission, setIsGpsOn, setIsModalEnableGPS, setIsDenied, setLoadingGlobal } from '../redux'
+import Geolocation from 'react-native-geolocation-service';
+import { Platform, PermissionsAndroid} from 'react-native';
 
 const requestLocation = async ({ dispatch }) => {
     const errorDispatcher = useToastErrorDispatch();
-    try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-            dispatch(setStatus(false))
-            return {
-                status
-            };
+    Geolocation.watchPosition(
+        (position) => {
+            dispatch(setLocation(position));
+            dispatch(setIsGpsOn(true))
+            dispatch(setIsModalEnableGPS(false))
+        },
+        (e) => {
+            dispatch(setLocation({}));
+            dispatch(setIsGpsOn(false))
+            dispatch(setIsDenied(true))
+            dispatch(setIsModalEnableGPS(true))
+            errorDispatcher(dispatch, e.message)
+        }, 
+        {
+            accuracy: {
+                android: 'high',
+                ios: 'best',
+            },
+            enableHighAccuracy: true,
+            maximumAge: 10000,
+            distanceFilter: 1,
+            interval: 10000,
+            fastestInterval: 10000,
+            forceRequestLocation: true,
+            forceLocationManager: false,
+            showLocationDialog: true,
         }
-
-        // let providerStatus = await Location.getProviderStatusAsync()
-        // alert(JSON.stringify(providerStatus))
-        
-        // let location = await Location.getCurrentPositionAsync({
-        //     accuracy: 6,
-        //     enableHighAccuracy: true 
-        // });
-        dispatch(setStatus(true))
-        // dispatch(setLocation(location))
-        return {
-            status
-        };
-    } catch (e) {
-        errorDispatcher(dispatch, e.message)
-        // alert(JSON.stringify(e.message))
-    }
+    )
 }
 
-export default requestLocation
+const watchPosition = () => {
+    Geolocation.watchPosition(
+        (position) => {
+            dispatch(setLocation(position));
+            dispatch(setIsGpsOn(true))
+            dispatch(setIsModalEnableGPS(false))
+        },
+        (e) => {
+            dispatch(setLocation({}));
+            dispatch(setIsGpsOn(false))
+            dispatch(setIsDenied(true))
+            dispatch(setIsModalEnableGPS(true))
+            errorDispatcher(dispatch, e.message)
+        },
+    )
+}
+
+const hasLocationPermission = async ({dispatch}) => {
+    const errorDispatcher = useToastErrorDispatch()
+    if (Platform.OS === 'android' && Platform.Version < 23) {
+        dispatch(setStatusPermission(true))
+        return true;
+    }
+
+    const hasPermission = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+
+    if (hasPermission) {
+        dispatch(setStatusPermission(true))
+        return true;
+    }
+    
+    const status = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+        
+    if (status === PermissionsAndroid.RESULTS.GRANTED) {
+        dispatch(setStatusPermission(true))
+        return true;
+    }
+    
+    if (status === PermissionsAndroid.RESULTS.DENIED) {
+        dispatch(setStatusPermission(false))
+        errorDispatcher(dispatch, 'Perizinan Lokasi tidak diizinkan')
+    } else if (status === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+        dispatch(setStatusPermission(false))
+        errorDispatcher(dispatch, 'Perizinan Lokasi tidak diizinkan')
+    }
+
+    dispatch(setStatusPermission(false))
+    return false;
+};
+
+export { requestLocation, hasLocationPermission }

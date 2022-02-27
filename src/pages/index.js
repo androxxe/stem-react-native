@@ -16,5 +16,9 @@ import KelasTambah from './KelasTambah'
 import TaskQuestion from './Task/question'
 import Splash from './Splash'
 import ImagePanZoom from './ImagePanZoom'
+import Kelompok from './Kelompok'
+import KelompokTambah from './Kelompok/tambah'
+import KelompokEdit from './Kelompok/edit'
+import InformasiDetail from './InformasiDetail'
 
-export { Home, Login, Daftar, LupaPassword, Profile, Kelas, Trail, TrailDetail, KelasDetail, TrailSaya, TrailMap, TaskQuestion, Splash, UbahProfil, UbahPassword, KelasTambah, TrailFavorit, ImagePanZoom }
+export { Home, Login, Daftar, LupaPassword, Profile, Kelas, Trail, TrailDetail, KelasDetail, TrailSaya, TrailMap, TaskQuestion, Splash, UbahProfil, UbahPassword, KelasTambah, TrailFavorit, ImagePanZoom, Kelompok, KelompokTambah, KelompokEdit, InformasiDetail }

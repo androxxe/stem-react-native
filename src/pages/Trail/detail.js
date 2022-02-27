@@ -1,18 +1,19 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useLayoutEffect, useCallback } from 'react'
 import { Text, StyleSheet, View, Dimensions, ScrollView, Alert, TouchableOpacity } from 'react-native'
 import { Avatar, Badge, Button, Card, colors, Header, Icon, LinearProgress } from 'react-native-elements'
 import { RFValue } from 'react-native-responsive-fontsize'
-import { LeftBackPage } from '../../components/atoms'
-import { axiosGet, axiosPost, requestLocation } from '../../functions'
+import { LeftBackPage, ModalEnableGPS } from '../../components/atoms'
+import { axiosGet, axiosPost, requestLocation, hasLocationPermission } from '../../functions'
 import { useDispatch, useSelector } from 'react-redux'
-import { setLoadingGlobal } from '../../redux'
+import { setLoadingGlobal, setIsModalEnableGPS } from '../../redux'
 import { variable } from '../../utils'
 import { getPathLength, getDistance } from 'geolib'
+import { NavigationContainer, useFocusEffect } from '@react-navigation/native';
 
 const TrailDetail = ({route, navigation}) => {
     const dispatch = useDispatch()
     const user = useSelector(state => state.user)
-    const location = useSelector(state => state.location)
+    const { location, statusPermission, isGpsOn, isDenied, isLoadingLocation, isModalEnableGPS } = useSelector(state => state.location)
 
     const [trail, setTrail] = useState({})
     const [isLoading, setIsLoading] = useState(true)
@@ -37,24 +38,62 @@ const TrailDetail = ({route, navigation}) => {
         if(status == 1){
             setTrail(data)
             setIsFavorit(data.trail_favorit.length > 0 ? true : false)
+            setIsLoading(false)
         } else {
             setTrail({})
+            alert(message)
         }
 
         dispatch(setLoadingGlobal(false))
-        setIsLoading(false)
     }
 
+    // 
+    const fetchLocation = ({showModal = false}) => {
+        if(statusPermission){
+            if(isGpsOn){
+                requestLocation({dispatch})
+                if(showModal && isDenied){
+                    dispatch(setIsModalEnableGPS(false))
+                }
+            } else {
+                requestLocation({dispatch})
+                if(showModal && isDenied){
+                    dispatch(setIsModalEnableGPS(true))
+                }
+            }
+        } else {
+            hasLocationPermission({dispatch})
+        }
+    }
+    
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
-            (async() => {
-                await requestLocation({dispatch})
-                await fetchTrailDetail()
-            })()
+            fetchLocation({showModal: true})
         });
-      
+
         return unsubscribe;
-    }, [navigation])
+    }, [statusPermission, isGpsOn])
+
+    const firstUpdate = useRef(true);
+    useLayoutEffect(() => {
+        if (firstUpdate.current) {
+            firstUpdate.current = false;
+            return;
+        }
+
+        fetchLocation({showModal: true})
+
+    }, [statusPermission, isGpsOn]);
+
+    useFocusEffect(
+        useCallback(
+            () => {
+                fetchTrailDetail()
+            },
+            [isGpsOn],
+        )
+    )
+    // 
 
     useEffect(() => {
         if(Object.keys(trail).length > 0){
@@ -72,16 +111,20 @@ const TrailDetail = ({route, navigation}) => {
     }, [trail])
 
     useEffect(() => {
-        if(location.status == true && !isLoading && Object.keys(trail).length > 0){
-            let jarakTemp = getDistance(
-                { latitude: trail.trail_task[0].task.latitude, longitude: trail.trail_task[0].task.longitude },
-                { latitude: location.location?.coords.latitude, longitude: location.location?.coords.longitude })
-            
-            jarakTemp = jarakTemp / 1000
-            jarakTemp = jarakTemp.toFixed(2)
-            setJarak(jarakTemp)
+        if(isGpsOn && !isLoading && Object.keys(trail).length > 0){
+            if(trail.trail_task.length > 0){
+                let jarakTemp = getDistance(
+                    { latitude: trail.trail_task[0].task.latitude, longitude: trail.trail_task[0].task.longitude },
+                    { latitude: location?.coords.latitude, longitude: location?.coords.longitude })
+                
+                jarakTemp = jarakTemp / 1000
+                jarakTemp = jarakTemp.toFixed(2)
+                setJarak(jarakTemp)
+            } else {
+                setJarak(0)
+            }
         }
-    }, [location, isLoading, trail])
+    }, [isGpsOn, isLoading, trail])
 
     const handleFavorit = async () => {
         setIsFavorit(!isFavorit)
@@ -103,17 +146,21 @@ const TrailDetail = ({route, navigation}) => {
     }
 
     const handleMulai = async () => {
+        let totalDikerjakan = 0
+        trail.trail_task.map(val => {
+            if(val.task.task_answer.length > 0){
+                totalDikerjakan++
+            }    
+        })
+
         if(trail.trail_user.length == 0 ){
             Alert.alert(
                 "Apakah kamu yakin?",
                 "Waktu akan dimulai sejak kamu mengambil trail ini",
                 [
-                    // The "No" button
-                    // Does nothing but dismiss the dialog when tapped
                     {
                         text: "Tidak",
                     },
-                    // The "Yes" button
                     {
                         text: "Ya",
                         onPress: async () => {
@@ -133,7 +180,7 @@ const TrailDetail = ({route, navigation}) => {
                             navigation.navigate('TrailMap', {
                                 // trail,
                                 id_trail: trail.id_trail,
-                                showModalTask: true
+                                showModalTask: totalDikerjakan == 0 ? true : false
                             })
                         },
                       },
@@ -143,7 +190,7 @@ const TrailDetail = ({route, navigation}) => {
             navigation.navigate('TrailMap', {
                 // trail,
                 id_trail: trail.id_trail,
-                showModalTask: false
+                showModalTask: totalDikerjakan == 0 ? true : false
             })
         }
 
@@ -157,8 +204,11 @@ const TrailDetail = ({route, navigation}) => {
             }    
         })
         
-        let progress = totalDikerjakan / trail.trail_task.length
-        
+        let progress = 0;
+        if(trail.trail_task.length > 0){
+            progress = totalDikerjakan / trail.trail_task.length
+        }
+
         return <View style={{  flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ marginRight: 10, fontWeight: 'bold' }}>{ totalDikerjakan }/{ trail.trail_task.length }</Text>
             <LinearProgress style={{ flex: 1 }} color="primary" value={progress} variant="determinate" />
@@ -176,6 +226,27 @@ const TrailDetail = ({route, navigation}) => {
         return totalSkor
     }
 
+    const hitungSoalBelumDinilai = () => {
+        let totalSoalBelumDinilai = 0
+
+        trail.trail_task.map(val => {
+            if(val.task.task_answer.length > 0){
+                if(val.task.task_answer[0].score == null){
+                    totalSoalBelumDinilai++
+                }
+            }
+        })
+
+        if(totalSoalBelumDinilai > 0){
+            return <Text style={{
+                marginTop: 10,
+                color: colors.grey2
+            }}>{ totalSoalBelumDinilai } tugas belum diperiksa</Text>
+        } else {
+            return null
+        }
+    }
+
     if(isLoading && !trail.trail){
         return null
     } else {
@@ -184,10 +255,10 @@ const TrailDetail = ({route, navigation}) => {
                 <Header 
                     leftComponent={() => LeftBackPage(navigation)}
                     centerComponent={{
-                        text: 'DETAIL TRAIL',
+                        text: 'DETAIL RUTE',
                         style: {
                             fontFamily: 'Poppins-Bold',
-                            fontSize: RFValue(16, height),
+                            fontSize: RFValue(18, height),
                             color: colors.white,
                         }
                     }}
@@ -283,7 +354,9 @@ const TrailDetail = ({route, navigation}) => {
                         <View style={styles.containerVertical}>
                             <View>
                                 <Text style={{ ...styles.title, textAlign: 'left' }}>Alamat:</Text>
-                                <Text style={{ ...styles.subtitle, textAlign: 'left' }}>{ trail.trail_task[0].task.alamat }</Text>
+                                <Text style={{ ...styles.subtitle, textAlign: 'left' }}>
+                                    { trail.trail_task.length > 0 ? trail.trail_task[0].task.alamat : '-' }
+                                </Text>
                             </View>
                         </View>
                         <View style={styles.containerVertical}>
@@ -292,26 +365,29 @@ const TrailDetail = ({route, navigation}) => {
                                 <Text style={{ ...styles.subtitle, textAlign: 'left' }}>{ trail.estimasi_waktu }</Text>
                             </View>
                         </View>
-                        <View style={styles.containerVertical}>
-                            <View>
-                                <Text style={{ ...styles.title, textAlign: 'left' }}>
-                                    { trail.last_submit ? 
-                                        'Dikumpulkan sebelum:' 
-                                    : trail.processing_time ? 
-                                        'Waktu pengerjaan:' 
-                                        : null 
-                                    }
-                                </Text>
-                                <Text style={{ ...styles.subtitle, textAlign: 'left' }}>
-                                    { trail.last_submit ? 
-                                        trail.last_submit
-                                    : trail.processing_time ? 
-                                        trail.processing_time
-                                        : null 
-                                    }
-                                </Text>
+                        {/* { trail.last_submit || trail.processing_time ?
+                            <View style={styles.containerVertical}>
+                                <View>
+                                    <Text style={{ ...styles.title, textAlign: 'left' }}>
+                                        { trail.last_submit ? 
+                                            'Dikumpulkan sebelum:' 
+                                        : trail.processing_time ? 
+                                            'Waktu pengerjaan:' 
+                                            : null 
+                                        }
+                                    </Text>
+                                    <Text style={{ ...styles.subtitle, textAlign: 'left' }}>
+                                        { trail.last_submit ? 
+                                            trail.last_submit
+                                        : trail.processing_time ? 
+                                            trail.processing_time
+                                            : null 
+                                        }
+                                    </Text>
+                                    
+                                </View>
                             </View>
-                        </View>
+                        : null } */}
                     </Card>
                     <Card containerStyle={{ borderRadius: 10 }}>
                         <Text style={{ ...styles.titleTrail, marginBottom: 12 }}>{ trail.nama }</Text>
@@ -332,11 +408,28 @@ const TrailDetail = ({route, navigation}) => {
                                         { totalSkor() }
                                     </Text>
                                 </View>
+                                { hitungSoalBelumDinilai() }
                             </View>
                         : null }
                     </Card>
-                    <Card containerStyle={{ borderRadius: 10, marginBottom: 70 }}>
+                    <Card containerStyle={{ borderRadius: 10 }}>
                         <Text style={styles.subtitleTrail}>{ trail.keterangan }</Text>
+                    </Card>
+                    <Card containerStyle={{ borderRadius: 10, marginBottom: 70 }}>
+                        <Text style={styles.questionTitle}>Author</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}>
+                            <Avatar
+                                size="medium"
+                                rounded
+                                source={{
+                                    uri: `${variable.storage}${trail.user.foto}`,
+                                }}
+                            />
+                            <View style={{ justifyContent: 'center' }}>
+                                <Text style={styles.question}>{ trail.user.nama }</Text>
+                                <Text style={{ ...styles.question, color: colors.grey3, fontSize: 16 }}>{ trail.user.email }</Text>
+                            </View>
+                        </View>
                     </Card>
                 </ScrollView>
                 <View style={{ 
@@ -345,35 +438,42 @@ const TrailDetail = ({route, navigation}) => {
                     left: 0,
                     width
                 }}>
-                    <Button 
-                        onPress={handleMulai}
-                        icon={
-                            trail.trail_user.length == 0 ?
-                            <Icon
-                                name="play"
-                                type="font-awesome-5"
-                                size={15}
-                                color="white"
-                                style={{ marginRight: 12 }}
-                            />
-                            : trail.trail_user[0].status == 1 ?
-                            <Icon
-                                name="eye"
-                                type="font-awesome-5"
-                                size={15}
-                                color="white"
-                                style={{ marginRight: 12 }}
-                            />
-                            : <Icon
-                                name="play"
-                                type="font-awesome-5"
-                                size={15}
-                                color="white"
-                                style={{ marginRight: 12 }}
-                            />}
-                    title={trail.trail_user.length == 0 ? "Mulai Trail" : trail.trail_user[0].status == 1 ? "Lihat Trail" : "Lanjutkan Trail"} 
-                    buttonStyle={{ height: 50, backgroundColor: trail.trail_user.length == 0 ? colors.primary : colors.success }} />
+                    { trail.trail_task.length > 0 ? ( 
+                        <Button 
+                            onPress={handleMulai}
+                            icon={
+                                trail.trail_user.length == 0 ?
+                                <Icon
+                                    name="play"
+                                    type="font-awesome-5"
+                                    size={15}
+                                    color="white"
+                                    style={{ marginRight: 12 }}
+                                />
+                                : trail.trail_user[0].status == 1 ?
+                                <Icon
+                                    name="eye"
+                                    type="font-awesome-5"
+                                    size={15}
+                                    color="white"
+                                    style={{ marginRight: 12 }}
+                                />
+                                : <Icon
+                                    name="play"
+                                    type="font-awesome-5"
+                                    size={15}
+                                    color="white"
+                                    style={{ marginRight: 12 }}
+                                />}
+                        title={trail.trail_user.length == 0 ? "Mulai Trail" : trail.trail_user[0].status == 1 ? "Lihat Trail" : "Lanjutkan Trail"} 
+                        buttonStyle={{ height: 50, backgroundColor: trail.trail_user.length == 0 ? colors.primary : colors.success }} />
+                    ) : (
+                        <Button 
+                            title="Tidak ada rute untuk dikerjakan" 
+                            buttonStyle={{ height: 50, backgroundColor: colors.grey4 }} />
+                    )}
                 </View>
+                <ModalEnableGPS dispatch={dispatch} isModalEnableGPS={isModalEnableGPS} />
             </View>
         )
     }
@@ -391,12 +491,14 @@ const styles = StyleSheet.create({
     title: { 
         color: colors.grey1,
         fontFamily: 'Poppins-Regular',
-        textAlign: 'center'
+        textAlign: 'center',
+        fontSize: RFValue(16, height)
     },
     subtitle: {
         color: 'black',
         fontFamily: 'Poppins-SemiBold',
-        textAlign: 'center'
+        textAlign: 'center',
+        fontSize: RFValue(16, height)
     },
     containerMini: {
         alignItems: 'center',
@@ -416,11 +518,23 @@ const styles = StyleSheet.create({
     },
     subtitleTrail: {
         fontFamily: 'Poppins-Regular',
-        fontSize: RFValue(15, height)
+        fontSize: RFValue(16, height)
     },
     containerVertical: { 
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 12
-    }
+    },
+    question: {
+        fontSize: RFValue(16, height),
+        fontFamily: 'Poppins-Regular',
+        marginHorizontal: 10
+    },
+    questionTitle: {
+        fontSize: RFValue(16, height),
+        fontFamily: 'Poppins-Bold',
+        fontWeight: 'bold',
+        color: colors.grey3,
+        marginBottom: 6
+    },
 })

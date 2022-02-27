@@ -7,7 +7,7 @@ import { axiosGet } from '../../functions'
 import { useToastErrorDispatch, useToastSuccessDispatch } from '../../hooks'
 import { setLoadingGlobal } from '../../redux'
 import { variable } from '../../utils'
-import { LeftBackPage, LeftComponent } from '../../components/atoms'
+import { LeftBackPage } from '../../components/atoms'
 
 const KelasDetail = ({navigation, route}) => {
     const dispatch = useDispatch()
@@ -57,13 +57,13 @@ const KelasDetail = ({navigation, route}) => {
                         text: title,
                         style: {
                             fontFamily: 'Poppins-Bold',
-                            fontSize: RFValue(16, height),
+                            fontSize: RFValue(18, height),
                             color: colors.white,
                         }
                     }}
                 />
                 <ScrollView>
-                    <Card>
+                    <Card containerStyle={{ borderRadius: 10 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 <Tooltip popover={<Text>Jumlah peserta</Text>}>
@@ -88,7 +88,7 @@ const KelasDetail = ({navigation, route}) => {
                                 <Text style={{ fontFamily: 'Poppins-Regular', marginLeft: 4 }}>{ kelasDetail.kode_kelas }</Text>
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Tooltip popover={<Text>Jumlah trail</Text>}>
+                                <Tooltip popover={<Text>Jumlah rute</Text>}>
                                     <Icon
                                         name="route"
                                         size={14}
@@ -100,7 +100,7 @@ const KelasDetail = ({navigation, route}) => {
                             </View>
                         </View>
                     </Card>
-                    <Card>
+                    <Card containerStyle={{ borderRadius: 10 }}>
                         <View style={styles.containerUser}>
                             <Avatar
                                 size="medium"
@@ -115,35 +115,61 @@ const KelasDetail = ({navigation, route}) => {
                             </View>
                         </View>
                     </Card>
-                    <Card>
-                        <Text style={{ ...styles.title, fontFamily: 'Poppins-Bold' }}>Trail</Text>
-                        { kelasDetail.kelas_trail.map((val, index) => 
-                            <TouchableOpacity key={`${index}`} onPress={() => navigation.navigate('TrailDetail', {
-                                id_trail: val.trail.id_trail
-                            })}>
-                                <ListItem key={index} bottomDivider>
-                                    <Avatar title={val.trail.nama} source={{ uri: `${variable.storage}${val.trail.foto}` }} />
-                                    <ListItem.Content>
-                                    <ListItem.Title style={{ 
-                                        fontWeight: 'bold'
-                                    }}>{ val.trail.nama }</ListItem.Title>
-                                    <ListItem.Subtitle>
-                                        { val.trail.keterangan ? val.trail.keterangan.length > 40 ? val.trail.keterangan.substr(0, 40) : val.trail.keterangan : '-' }
-                                    </ListItem.Subtitle>
-                                    </ListItem.Content>
-                                </ListItem>
-                            </TouchableOpacity>
-                        )}
+                    <Card containerStyle={{ borderRadius: 10 }}>
+                        <Text style={{ ...styles.title, fontFamily: 'Poppins-Bold' }}>Rute</Text>
+                        { kelasDetail.kelas_trail.length > 0 ?
+                            kelasDetail.kelas_trail.map((val, index) => 
+                                <TouchableOpacity key={`${index}`} onPress={() => navigation.navigate('TrailDetail', {
+                                    id_trail: val.trail.id_trail
+                                })}>
+                                    <ListItem key={index} bottomDivider>
+                                        <Avatar title={val.trail.nama} source={{ uri: `${variable.storage}${val.trail.foto}` }} />
+                                        <ListItem.Content>
+                                            <ListItem.Title style={{ 
+                                                fontWeight: 'bold'
+                                            }}>{ val.trail.nama }</ListItem.Title>
+                                            <ListItem.Subtitle>
+                                                { val.trail.keterangan ? val.trail.keterangan.length > 40 ? val.trail.keterangan.substr(0, 40) : val.trail.keterangan : '-' }
+                                            </ListItem.Subtitle>
+                                        </ListItem.Content>
+                                        <ListItem.Chevron />
+                                    </ListItem>
+                                </TouchableOpacity>
+                            ) 
+                            : <Text style={{ textAlign: 'center', marginBottom: 8, marginTop: 16 }}>Belum ada rute</Text>                        
+                        }
                     </Card>
-                    <Card>
-                        <Text style={{ ...styles.title, fontFamily: 'Poppins-Bold' }}>Siswa</Text>
+                    <Card containerStyle={{ borderRadius: 10 }}>
+                        <Text style={{ ...styles.title, fontFamily: 'Poppins-Bold' }}>Informasi</Text>
+                        { kelasDetail.informasi.length > 0 ?
+                            kelasDetail.informasi.map((val, index) => 
+                                <TouchableOpacity key={`${index}`} onPress={() => navigation.navigate('InformasiDetail', {
+                                    id_informasi: val.id_informasi,
+                                    id_kelas: kelasDetail.id_kelas,
+                                })}>
+                                    <ListItem key={index} bottomDivider>
+                                        <Avatar title={val.judul} source={{ uri: `${variable.storage}${val.thumbnail}` }} />
+                                        <ListItem.Content>
+                                        <ListItem.Title style={{ 
+                                            fontWeight: 'bold'
+                                        }}>{ val.judul }</ListItem.Title>
+                                        <ListItem.Subtitle>
+                                            { val.created_at_string }
+                                        </ListItem.Subtitle>
+                                        </ListItem.Content>
+                                    </ListItem>
+                                </TouchableOpacity>
+                            ) 
+                            : <Text style={{ textAlign: 'center', marginBottom: 8, marginTop: 16 }}>Tidak ada informasi</Text>                        
+                        }
+                    </Card>
+                    <Card containerStyle={{ borderRadius: 10, marginBottom: 12 }}>
+                        <Text style={{ ...styles.title, fontFamily: 'Poppins-Bold' }}>Daftar Siswa</Text>
                         { kelasDetail.kelas_user.map((val, index) => 
-                            <ListItem key={index} bottomDivider>
+                            <View key={`siswa_${index}`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginVertical: 6 }}>
                                 <Avatar rounded title={val.user.nama} source={{ uri: `${variable.storage}${val.user.foto}` }} />
-                                <ListItem.Content>
-                                <ListItem.Title>{ val.user.nama }</ListItem.Title>
-                                </ListItem.Content>
-                            </ListItem>
+                                <Text style={{ marginLeft: 8}}>{ val.user.nama }</Text>
+                            </View>
                         )}
                     </Card>
                 </ScrollView>
@@ -172,6 +198,6 @@ const styles = StyleSheet.create({
     title: {
         fontFamily: 'Poppins-Regular',
         marginLeft: 12,
-        fontSize: RFValue(15, height)
+        fontSize: RFValue(16, height)
     }
 })

@@ -5,6 +5,7 @@ import AutoHeightImage from 'react-native-auto-height-image'
 import { Card, colors, Input, Button } from 'react-native-elements'
 import { logoSingleText } from '../../assets/images'
 import * as yup from 'yup'
+import { RFValue } from 'react-native-responsive-fontsize'
 import { axiosPost } from '../../functions'
 import { useDispatch } from 'react-redux'
 import { useToastErrorDispatch, useToastSuccessDispatch } from '../../hooks'
@@ -20,13 +21,16 @@ const index = ({navigation}) => {
     const handleFormSubmit = async (values) => {
         setIsLoading(true)
         const {status, message, data} = await axiosPost({dispatch, route: 'user/lupa-password', data: values, isToast: false})
+        setIsLoading(false)
         if(status == 1){
             setPesanSukses(true)
-        }else{
+            setPesan(message)
+            return true;
+        } else{
             setPesanSukses(false)
+            setPesan(message)
+            return false
         }
-        setPesan(message)
-        setIsLoading(false)
     }
     const validasi = yup.object().shape({
         email: yup.string().required('Email tidak boleh kosong').email('Email tidak valid')
@@ -36,7 +40,7 @@ const index = ({navigation}) => {
         if(pesan){
             return (
                 <View style={{ padding: 10, marginHorizontal: 6, marginTop: 20, borderRadius: 10, backgroundColor: pesanSukses ? colors.success : colors.error, marginBottom:20 }} >
-                    <Text style={{ color: colors.white }}>{pesan}</Text>
+                    <Text style={{ color: colors.white, fontFamily: 'Poppins-Regular', fontSize: RFValue(16, height) }}>{pesan}</Text>
                 </View>
             )
         }else{
@@ -59,12 +63,17 @@ const index = ({navigation}) => {
                 <Formik 
                     initialValues={{email: '',}}
                     validationSchema={validasi}
-                    onSubmit={async(values) => await handleFormSubmit(values)}
+                    onSubmit={async(values, { resetForm }) => {
+                        const status = await handleFormSubmit(values)
+                        if(status == true){
+                            resetForm()
+                        }
+                    }}
                 >
                     {({handleChange, handleBlur, errors, values, touched, handleSubmit}) => (
                         <View>
                             <Input
-                                placeholder="example@gmail.com"
+                                placeholder="emailkamu@gmail.com"
                                 label="Email"
                                 leftIcon={{ type: 'font-awesome', name: 'user' }}
                                 style={styles.textInput}
@@ -89,7 +98,7 @@ const index = ({navigation}) => {
 }
 
 export default index
-const {width, height} = Dimensions.get('screen')
+const {width, height} = Dimensions.get('window')
 
 const styles = StyleSheet.create({
     container: {

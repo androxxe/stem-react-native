@@ -28,7 +28,8 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "FOREGROUND_SERVICE"
-      ]
+      ],
+      "package": "com.androxxe.STEM"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -4,17 +4,19 @@ import AutoHeightImage from 'react-native-auto-height-image'
 import { BottomSheet, Button } from 'react-native-elements'
 import { RFValue } from 'react-native-responsive-fontsize'
 import { MapIcon } from '../../../assets/images'
-import { requestLocation } from '../../../functions'
+import { requestLocation, hasLocationPermission } from '../../../functions'
+import { setIsModalEnableGPS } from '../../../redux'
 
-const ModalEnableGPS = ({dispatch, isModalEnableGPSVisible, setIsModalEnableGPSVisible}) => {
+const ModalEnableGPS = ({dispatch, isModalEnableGPS}) => {
     const handleTutup = async () => {
-        requestLocation({dispatch})
-        setIsModalEnableGPSVisible(false)
+        await hasLocationPermission({dispatch})
+        await requestLocation({dispatch})
+        dispatch(setIsModalEnableGPS(false))
     }
 
     return (
         <BottomSheet
-            isVisible={isModalEnableGPSVisible}
+            isVisible={isModalEnableGPS}
             containerStyle={{ backgroundColor: 'rgba(0.5, 0.25, 0, 0.2)' }}
             >
             <View style={{ 

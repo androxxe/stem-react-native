@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState, useRef, useLayoutEffect } from 'react'
 import { View, Text, Dimensions, ActivityIndicator, TouchableOpacity, StyleSheet, TouchableNativeFeedback, RefreshControl } from 'react-native'
 import { colors, Header, Button, BottomSheet, Input, Card, Tooltip } from 'react-native-elements'
 import { Icon } from 'react-native-elements'
@@ -18,7 +18,6 @@ const Kelas = ({ navigation, route }) => {
     const [refresh, setRefresh] = useState(false)
     
     const fetchKelas = async () => {
-        setIsLoading(true)
         const { data, status, message } = await axiosGet({ dispatch, route: 'kelas',
             config: {
                 headers: {
@@ -32,7 +31,6 @@ const Kelas = ({ navigation, route }) => {
             errorDispatcher(dispatch, message)
         }
         setKelas(data)
-        setIsLoading(false)
     }
 
     const TambahKelas = () => {
@@ -40,15 +38,16 @@ const Kelas = ({ navigation, route }) => {
             <TouchableOpacity style={{ 
                 flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'flex-end'
+                justifyContent: 'flex-end',
+                marginRight: 4
             }}
             onPress={() => {
                 navigation.navigate('KelasTambah')
             }} 
             >
                 <Icon
-                    name="plus-square"
-                    // size={24}
+                    name="plus"
+                    size={18}
                     color="white"
                     type="font-awesome-5"
                 />
@@ -63,7 +62,9 @@ const Kelas = ({ navigation, route }) => {
     
     const handleRefresh = useCallback(async() => {
         setRefresh(true);
+        setIsLoading(true)
         await fetchKelas()
+        setIsLoading(false)
         setRefresh(false)
       }, []);
 
@@ -75,7 +76,7 @@ const Kelas = ({ navigation, route }) => {
                 })
             }}>
                 <Card containerStyle={{ 
-                    borderRadius: 10
+                    borderRadius: 20
                 }}>
                     <View>
                         <Text style={{ 
@@ -108,7 +109,7 @@ const Kelas = ({ navigation, route }) => {
                                 <Text style={{ fontFamily: 'Poppins-Regular', marginLeft: 4 }}>{ val.kelas.kode_kelas }</Text>
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Tooltip popover={<Text>Jumlah trail</Text>}>
+                                <Tooltip popover={<Text>Jumlah rute</Text>}>
                                     <Icon
                                         name="route"
                                         size={14}
@@ -124,20 +125,33 @@ const Kelas = ({ navigation, route }) => {
             </TouchableNativeFeedback>
         )
     }
-    
+
+    const firstUpdate = useRef(true);
     useEffect(() => {
-        (async() => {
-            await fetchKelas()
-        })()
-    }, [])
-    
+        if (firstUpdate.current) {
+            (async() => {
+                setIsLoading(true)
+                await fetchKelas()
+                setIsLoading(false)
+            })()
+            firstUpdate.current = false;
+            return;
+        }
+        
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchKelas()
+        })
+
+        return unsubscribe
+    }, []);
+
     return (
         <View style={{  flex: 1 }}>
             <Header
                 leftComponent={{ text: 'KELAS', style: { 
                     color: '#fff', 
                     fontFamily: 'Poppins-Bold',
-                    fontSize: RFValue(16, height),
+                    fontSize: RFValue(18, height),
                 }}}
                 rightComponent={<TambahKelas />}
             />
@@ -163,9 +177,18 @@ const Kelas = ({ navigation, route }) => {
                         )}
                     </ScrollView>
                 ) : (
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                        <NoData title="Kamu belum punya kelas" subtitle="Tambahkan kelas pada tombol tambah disebelah kanan atas" />
-                    </View>
+                    <ScrollView 
+                        refreshControl={
+                            <RefreshControl 
+                                refreshing={refresh}
+                                onRefresh={handleRefresh}
+                            />} 
+                        style={{ flex: 1 }}
+                    >
+                        <View style={{ height: height - 120, justifyContent: 'center' }}>
+                            <NoData title="Kamu belum punya kelas" subtitle="Tambahkan kelas pada tombol tambah disebelah kanan atas" />
+                        </View>
+                    </ScrollView>
                 )
             }
         </View>

@@ -30,10 +30,15 @@ const Splash = ({navigation}) => {
                         setTimeout(() => {
                             navigation.replace('TabStack')
                         }, 300)
+                    } else {
+                        setTimeout(() => {
+                            navigation.replace('Login')
+                        }, 300)
                     }
                 } catch (e) {
                     errorDispatcher(dispatch, JSON.stringify(e))
                     alert(JSON.stringify(e))
+                    navigation.replace('Login')
                 }  
             } else {
                 setTimeout(() => {

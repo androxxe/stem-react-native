@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Login, Daftar, LupaPassword, Profile, Kelas, Trail, TrailDetail, KelasDetail, TrailSaya, TrailMap, TaskQuestion, Splash, UbahProfil, UbahPassword, KelasTambah, TrailFavorit, ImagePanZoom } from '../pages'
+import { InformasiDetail, Home, Kelompok, KelompokTambah, KelompokEdit, Login, Daftar, LupaPassword, Profile, Kelas, Trail, TrailDetail, KelasDetail, TrailSaya, TrailMap, TaskQuestion, Splash, UbahProfil, UbahPassword, KelasTambah, TrailFavorit, ImagePanZoom } from '../pages'
 import { Icon } from 'react-native-elements/dist/icons/Icon';
 import { colors } from 'react-native-elements';
 
@@ -57,7 +57,7 @@ const TabStack = () => {
                     },
                 }}/>
             <Tab.Screen name="Trail" component={Trail} options={{ 
-                tabBarLabel: "Trail",
+                tabBarLabel: "Rute",
                 headerShown:false,
                 tabBarIcon: ({ focused, color, size }) => {
                     if(focused){
@@ -76,7 +76,7 @@ const TabStack = () => {
                 },
             }}/>
             <Tab.Screen name="TrailSaya" component={TrailSaya} options={{ 
-                tabBarLabel: "Trail Saya",
+                tabBarLabel: "Rute Saya",
                 headerShown:false,
                 tabBarIcon: ({ focused, color, size }) => {
                     if(focused){
@@ -135,6 +135,10 @@ const MainStack = () => {
                 <Stack.Screen name="UbahProfil" component={UbahProfil} options={{ headerShown: false }}/>
                 <Stack.Screen name="UbahPassword" component={UbahPassword} options={{ headerShown: false }}/>
                 <Stack.Screen name="ImagePanZoom" component={ImagePanZoom} options={{ headerShown: false }}/>
+                <Stack.Screen name="Kelompok" component={Kelompok} options={{ headerShown: false }}/>
+                <Stack.Screen name="KelompokTambah" component={KelompokTambah} options={{ headerShown: false }}/>
+                <Stack.Screen name="KelompokEdit" component={KelompokEdit} options={{ headerShown: false }}/>
+                <Stack.Screen name="InformasiDetail" component={InformasiDetail} options={{ headerShown: false }}/>
             </Stack.Navigator>
         </NavigationContainer>
     )

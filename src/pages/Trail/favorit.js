@@ -1,72 +1,79 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useLayoutEffect, useRef } from 'react'
 import { Text, StyleSheet, View, Dimensions, TouchableOpacity, FlatList, ActivityIndicator, ScrollView, RefreshControl } from 'react-native'
-import { Card, colors, Icon, Header, Input, Avatar } from 'react-native-elements'
+import { colors, Icon, Header, Input, Avatar } from 'react-native-elements'
 import { RFValue } from 'react-native-responsive-fontsize'
 import { useDispatch, useSelector } from 'react-redux'
-import { axiosGet, requestLocation } from '../../functions'
+import { axiosGet, requestLocation, hasLocationPermission } from '../../functions'
 import { useToastErrorDispatch, useToastSuccessDispatch } from '../../hooks'
-import { NoData, CardTrail, LeftBackPage } from '../../components/atoms'
-import { getDistance, getPreciseDistance } from 'geolib'
-import { setLoadingGlobal } from '../../redux'
+import { NoData, CardTrail, ModalEnableGPS } from '../../components/atoms'
+import { getDistance } from 'geolib'
+import { setIsModalEnableGPS } from '../../redux'
 
-const favorit = ({navigation}) => {
+const Favorit = ({navigation}) => {
     const dispatch = useDispatch()
     const [trails, setTrails] = useState([])
     const [formCari, setFormCari] = useState(false)
     const [textCari, setTextCari] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
     const [refresh, setRefresh] = useState(false)
-    const [errorMsg, setErrorMsg] = useState(null);
     
     const user = useSelector(state => state.user)
-    const { location, status } = useSelector(state => state.location)
+    const { location, statusPermission, isGpsOn, isDenied, isLoadingLocation, isModalEnableGPS } = useSelector(state => state.location)
     
     const errorDispatcher = useToastErrorDispatch()
     const successDispatcher = useToastSuccessDispatch()
 
     useEffect(() => {
-        (async() => {
-            dispatch(setLoadingGlobal(true))
-            await requestLocation({dispatch})
-            dispatch(setLoadingGlobal(false))
-        })()
-    }, [])
-    
-    useEffect(() => {
-        if(status){
-            fetchTrails()
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchLocation({showModal: true})
+        });
+
+        return unsubscribe;
+    }, [statusPermission, isGpsOn])
+
+    const firstUpdate = useRef(true);
+    useLayoutEffect(() => {
+        if (firstUpdate.current) {
+            firstUpdate.current = false;
+            return;
         }
-    }, [status])
+
+        fetchLocation({showModal: true})
+
+    }, [statusPermission, isGpsOn]);
 
     useEffect(() => {
-        const timer = setTimeout(async() => {
-            (async() => {
-                if(textCari != ''){
-                    setIsLoading(true)
-                    const { status, message, data } = await axiosGet({dispatch, route: 'trail/favorit/cari',
-                        config:{
-                            headers: {
-                                token: user.token
-                            },
-                            params: {
-                                cari: textCari
-                            }
-                        }, isToast: false
-                    })
-                    if (status != 1) {
-                        setTrails([])
-                        errorDispatcher(dispatch, message)
-                    } else{
-                        setTrails(data)
-                    }
-                    setIsLoading(false)
-                } else {
-                    fetchTrails()
-                }
-            })()
-        }, 800)
+        let timer = 0
+        if(isGpsOn == true){
+            if(textCari !== ''){
+                timer = setTimeout(() => {
+                    fetchTrailsCari()
+                }, 800)
+            } else {
+                fetchTrails()
+            }
+        }
+
         return () => clearTimeout(timer)
-    }, [textCari])
+    }, [isGpsOn, textCari])
+
+    const fetchLocation = ({showModal = false}) => {
+        if(statusPermission){
+            if(isGpsOn){
+                requestLocation({dispatch})
+                if(showModal && isDenied){
+                    dispatch(setIsModalEnableGPS(false))
+                }
+            } else {
+                requestLocation({dispatch})
+                if(showModal && isDenied){
+                    dispatch(setIsModalEnableGPS(true))
+                }
+            }
+        } else {
+            hasLocationPermission({dispatch})
+        }
+    }
 
     const fetchTrails = async() => {
         setIsLoading(true)
@@ -78,7 +85,32 @@ const favorit = ({navigation}) => {
             }
         , isToast: false})
 
-        if(status == 1){
+        if (status != 1) {
+            setTrails([])
+            errorDispatcher(dispatch, message)
+        } else {
+            setTrails(data)
+        }
+        setIsLoading(false)
+    }
+
+    const fetchTrailsCari = async () => {
+        setIsLoading(true)
+        const { status, message, data } = await axiosGet({dispatch, route: 'trail/favorit/cari',
+            config:{
+                headers: {
+                    token: user.token
+                },
+                params: {
+                    cari: textCari
+                }
+            }, isToast: false
+        })
+        
+        if (status != 1) {
+            setTrails([])
+            errorDispatcher(dispatch, message)
+        } else {
             setTrails(data)
         }
         setIsLoading(false)
@@ -93,7 +125,7 @@ const favorit = ({navigation}) => {
     }
 
     const jarak = (latitude, longitude) => {
-        if(location?.coords.latitude && location?.coords.longitude){
+        if(isGpsOn){
             let jarak = getDistance(
                { latitude, longitude },
                { latitude: location?.coords.latitude, longitude: location?.coords.longitude })
@@ -126,7 +158,7 @@ const favorit = ({navigation}) => {
     }
 
     const ListTrails = () => {
-        if(isLoading){
+        if(isLoading || isGpsOn == false){
             return (
                 <View style={{ flex: 1, justifyContent: 'center' }}>
                     <ActivityIndicator size='large' color={colors.primary}/>
@@ -145,15 +177,17 @@ const favorit = ({navigation}) => {
                 )
             } else {
                 return (
-                    <ScrollView refreshControl={
-                        <RefreshControl 
-                            refreshing={refresh}
-                            onRefresh={handleRefresh}
-                        />
-                    } style={{ flex: 1 }}>
-                            <View style={{ marginTop: 100 }}>
-                                <NoData title="Trail tidak tersedia"/>
-                            </View>
+                    <ScrollView 
+                        refreshControl={
+                            <RefreshControl 
+                                refreshing={refresh}
+                                onRefresh={handleRefresh}
+                            />} 
+                        style={{ flex: 1 }}
+                    >
+                        <View style={{ height: height - 120, justifyContent: 'center' }}>
+                            <NoData title="Trail tidak tersedia"/>
+                        </View>
                     </ScrollView>
                 )
             }
@@ -163,17 +197,17 @@ const favorit = ({navigation}) => {
     return(
         <View style={styles.container}>
             <Header
-                leftComponent={LeftBackPage}
-                centerComponent={{
+                leftComponent={{
                     text: 'TRAIL FAVORIT', style:{
                         color: colors.white,
                         fontFamily: 'Poppins-Bold',
-                        fontSize: RFValue(16, height)
+                        fontSize: RFValue(18, height),
+                        width: 400
                     }
                 }}
                 rightComponent={RightComponent}    
             />
-            {formCari ? (
+            { formCari ? (
                 <View style={{
                     backgroundColor: colors.white,
                     paddingHorizontal: 10,
@@ -183,6 +217,7 @@ const favorit = ({navigation}) => {
                         placeholder='Cari Trail'
                         containerStyle={{
                             height: 50,
+                            marginTop: 6
                         }}
                         inputStyle={{
                             fontFamily: 'Poppins-Regular',
@@ -194,11 +229,12 @@ const favorit = ({navigation}) => {
                 </View>
             ) : null}
             <ListTrails />
+            <ModalEnableGPS dispatch={dispatch} isModalEnableGPS={isModalEnableGPS} />
         </View>
     )
 }
 
-export default favorit
+export default Favorit
 
 const {width, height} = Dimensions.get('window')
 const styles = StyleSheet.create({

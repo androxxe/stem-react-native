@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, Dimensions, Alert, ScrollView } from 'react-native'
+import { View, Text, Dimensions, Alert, ScrollView, Image } from 'react-native'
 import { Header, Icon, ListItem, Avatar, colors } from 'react-native-elements'
 import { RFValue } from 'react-native-responsive-fontsize'
 import { axiosPost } from '../../functions'
@@ -9,6 +9,7 @@ import { variable } from '../../utils'
 import * as ImagePicker from 'expo-image-picker';
 import FormData from 'form-data';
 import { setLoadingGlobal, setUser } from '../../redux'
+import OneSignal from 'react-native-onesignal'
 
 const Profile = ({navigation}) => {
     const dispatch = useDispatch()
@@ -26,7 +27,9 @@ const Profile = ({navigation}) => {
                                 token: user.token
                             }
                         })
-
+                        OneSignal.sendTags({
+                            id_user: `logout`,
+                        })
                         await AsyncStorage.removeItem('token')
                         navigation.replace("Login")
                     }},
@@ -74,6 +77,12 @@ const Profile = ({navigation}) => {
 
     const list = [
         {
+            title: 'Kelompok',
+            icon: 'users',
+            iconType: 'font-awesome-5',
+            onPress: () => navigation.navigate('Kelompok')
+        },
+        {
             title: 'Ubah Profil',
             icon: 'user',
             iconType: 'font-awesome-5',
@@ -105,7 +114,7 @@ const Profile = ({navigation}) => {
                 leftComponent={{ text: 'PROFIL', style: { 
                     color: '#fff', 
                     fontFamily: 'Poppins-Bold',
-                    fontSize: RFValue(16, height),
+                    fontSize: RFValue(18, height),
                 }}}
                 />
             <ScrollView>
@@ -132,6 +141,18 @@ const Profile = ({navigation}) => {
                             onPress={handleImagePicker}
                         />
                     </Avatar>
+                    <Text style={{
+                        marginTop: 20,
+                        fontSize: RFValue(18, height),
+                        fontFamily: 'Poppins-Regular',
+                    }}>{ user.user.nama }</Text>
+                    <Text style={{
+                        fontFamily: 'Poppins-Regular',
+                        color: colors.grey2,
+                        marginBottom: 10
+                    }}>
+                        { user.user.email }
+                    </Text>
                 </View>
                 {
                     list.map((item, i) => (
@@ -142,7 +163,8 @@ const Profile = ({navigation}) => {
                                 color={colors.primary}    
                                 size={18}
                                 containerStyle={{ 
-                                    marginVertical: 4
+                                    marginVertical: 4,
+                                    width: 26
                                 }}
                             />
                             <ListItem.Content>
@@ -152,13 +174,13 @@ const Profile = ({navigation}) => {
                         </ListItem>
                     ))
                 }
+                <Text style={{ 
+                    textAlign: 'center',
+                    color: colors.grey2,
+                    marginVertical: 20,
+                    fontSize: 12
+                }}>Version 1.1</Text>
             </ScrollView>
-            <Text style={{ 
-                textAlign: 'center',
-                color: colors.grey2,
-                marginBottom: 20,
-                fontSize: 12
-            }}>Version 1.0</Text>
         </View>
     )
 }

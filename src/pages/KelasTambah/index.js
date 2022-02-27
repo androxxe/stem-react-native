@@ -37,7 +37,7 @@ const KelasTambah = ({ navigation, route }) => {
                     text: 'TAMBAH KELAS',
                     style: {
                         fontFamily: 'Poppins-Bold',
-                        fontSize: RFValue(16, height),
+                        fontSize: RFValue(18, height),
                         color: colors.white,
                     }
                 }}

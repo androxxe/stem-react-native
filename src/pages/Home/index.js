@@ -1,26 +1,25 @@
-import React, { Component } from 'react'
+import React from 'react'
 import { Text, StyleSheet, View, ActivityIndicator, FlatList, Dimensions, TouchableNativeFeedback } from 'react-native'
-import Constants from 'expo-constants'
 import { colors } from 'react-native-elements'
 import { Card, Image, Icon } from 'react-native-elements'
 import { logoSingleText } from '../../assets/images'
 import { RFValue } from 'react-native-responsive-fontsize'
+import { ScrollView } from 'react-native-gesture-handler';
+import Constants from 'expo-constants'
 
 const index = ({ navigation }) => {
     const menu = [
         {
             title: 'Kelas',
             subtitle: 'Daftar kelas yang kamu ikuti',
-            image: 'https://yt3.ggpht.com/ytc/AKedOLR0Q2jl80Ke4FS0WrTjciAu_w6WETLlI0HmzPa4jg=s900-c-k-c0x00ffffff-no-rj',
             onPress: () => {
                 navigation.navigate('Kelas')
             },
             icon: 'list-alt'
         },
         {
-            title: 'Cari Trail',
-            subtitle: 'Cari & jelajahi trail baru',
-            image: 'https://yt3.ggpht.com/ytc/AKedOLR0Q2jl80Ke4FS0WrTjciAu_w6WETLlI0HmzPa4jg=s900-c-k-c0x00ffffff-no-rj',
+            title: 'Cari Rute',
+            subtitle: 'Cari & jelajahi rute baru',
             onPress: () => {
                 navigation.navigate('Trail')
             },
@@ -29,16 +28,14 @@ const index = ({ navigation }) => {
         {
             title: 'Masuk kelas',
             subtitle: 'Masuk kelas melalui kode',
-            image: 'https://yt3.ggpht.com/ytc/AKedOLR0Q2jl80Ke4FS0WrTjciAu_w6WETLlI0HmzPa4jg=s900-c-k-c0x00ffffff-no-rj',
             onPress: () => {
                 navigation.navigate('KelasTambah')
             },
             icon: 'sign-in-alt'
         },
         {
-            title: 'Trail saya',
-            subtitle: 'Cari & jelajahi trail baru',
-            image: 'https://yt3.ggpht.com/ytc/AKedOLR0Q2jl80Ke4FS0WrTjciAu_w6WETLlI0HmzPa4jg=s900-c-k-c0x00ffffff-no-rj',
+            title: 'Rute saya',
+            subtitle: 'Cari & jelajahi rute baru',
             onPress: () => {
                 navigation.navigate('TrailSaya')
             },
@@ -47,8 +44,8 @@ const index = ({ navigation }) => {
     ]
     return (
         <View style={styles.container}>
-            <View style={{ 
-                // marginTop: Constants.statusBarHeight
+            <ScrollView style={{ 
+                paddingTop: Constants.statusBarHeight + 20
              }}>
                 <View style={{ 
                     alignItems: 'center',
@@ -64,34 +61,30 @@ const index = ({ navigation }) => {
                     />
                 </View>
                 <View style={{
-                    // flex: 1,
-                    flexWrap: 'wrap',
                     flexDirection: 'row',
-                    paddingHorizontal: 10,
-                    justifyContent: 'space-between'
-                 }}>
-                    <FlatList 
-                        data={menu}
-                        keyExtractor={(item, index) => `${index}`}     //has to be unique   
-                        renderItem={item => (
-                            <TouchableNativeFeedback style={{ borderRadius: 12 }} onPress={item.item.onPress}>
-                                <Card containerStyle={styles.containerCard}>
-                                        <Icon 
-                                            name={item.item.icon}
-                                            color={colors.primary}
-                                            size={40}
-                                            type='font-awesome-5'
-                                        />
-                                        <Text style={styles.title}>{ item.item.title }</Text>
-                                        <Text style={styles.subtitle}>{ item.item.subtitle }</Text>
-                                </Card>
-                            </TouchableNativeFeedback>
-                        )} 
-                        horizontal={false}
-                        numColumns={2}
-                    />
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 19,
+                    marginTop: 10,
+                    paddingBottom: 60
+                }}>
+                    { menu.map((item, index) => 
+                        <TouchableNativeFeedback key={`menu_${index}`} onPress={item.onPress}>
+                            <Card containerStyle={styles.containerCard}>
+                                <Icon 
+                                    name={item.icon}
+                                    color={colors.primary}
+                                    size={36}
+                                    type='font-awesome-5'
+                                />
+                                <Text style={styles.title}>{ item.title }</Text>
+                                <Text style={styles.subtitle}>{ item.subtitle }</Text>
+                            </Card>
+                        </TouchableNativeFeedback>
+                    )} 
                 </View>
-             </View>
+            </ScrollView>
         </View>
     )
 }
@@ -110,10 +103,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10
     },
     containerCard: {
-        flex: 1,
+        // flex: 1,
         borderRadius: 12,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        width: (width / 2) - 30,
+        height: (width / 2) - 30,
+        marginHorizontal: 0,
     },
     title: {
         marginTop: 16,

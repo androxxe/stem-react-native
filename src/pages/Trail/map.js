@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, Dimensions, StyleSheet, Modal, Pressable, ActivityIndicator, Alert } from 'react-native'
-import { colors, Header, SpeedDial, ListItem, BottomSheet, Button, Avatar, Icon } from 'react-native-elements'
+import React, { useEffect, useState, useLayoutEffect, useRef } from 'react'
+import { View, Text, Dimensions, StyleSheet, Modal, Pressable, ActivityIndicator, Alert, Linking, Animated } from 'react-native'
+import { colors, Header, SpeedDial, ListItem, BottomSheet, Button, Avatar, Icon, Card } from 'react-native-elements'
 import MapView, { Marker, Polyline } from 'react-native-maps'
 import { RFValue } from 'react-native-responsive-fontsize'
-import { LeftBackPage } from '../../components/atoms'
-import { axiosGet, axiosPost, requestLocation } from '../../functions'
+import { LeftBackPage, ModalEnableGPS } from '../../components/atoms'
+import { axiosGet, axiosPost, requestLocation, hasLocationPermission } from '../../functions'
 import { useDispatch, useSelector } from 'react-redux'
 import { getCenter } from 'geolib'
 import { variable } from '../../utils'
 import { useToastErrorDispatch } from '../../hooks'
-import { LateTime, MarkerGreen, MarkerOrange, OnTime } from '../../assets/images'
-import { TrailSaya } from '..'
-import { setLoadingGlobal } from '../../redux'
+import { LateTime, MarkerGreen, MarkerOrange, OnTime, UserOnMaps as UserOnMapsIcon, FinishGreen, FinishOrange, StartGreen, StartOrange } from '../../assets/images'
+import { setLoadingGlobal, setIsModalEnableGPS } from '../../redux'
 import AutoHeightImage from 'react-native-auto-height-image'
 
 const SpeedDialComponent = ({ setIsSpeedDialOpen, isSpeedDialOpen, showModalTask, setShowModalTask, fetchPengerjaanTrail}) => {
@@ -54,34 +53,60 @@ const map = ({ navigation, route}) => {
     const [center, setCenter] = useState(false)
     const [showModalTask, setShowModalTask] = useState(false)
     const [dataBottomSheetMask, setDataBottomSheetMask] = useState(false)
+    const [userOnMaps, setUserOnMaps] = useState([])
     
-    const location = useSelector(state => state.location)
+    const { location, statusPermission, isGpsOn, isDenied, isLoadingLocation, isModalEnableGPS } = useSelector(state => state.location)
     const user = useSelector(state => state.user)
     const errorDispatcher = useToastErrorDispatch()
 
+    let totalTask = 0
+    if(Object.keys(trail).length > 0){
+        totalTask = trail?.trail_task.length
+    }
+    
+    // 
     useEffect(() => {
+        setShowModalTask(route.params.showModalTask)
         const unsubscribe = navigation.addListener('focus', () => {
-            (async() => {
-                await fetchPengerjaanTrail()
-                setShowModalTask(route.params.showModalTask)
-                await requestLocation({dispatch})
-            })()
+            fetchLocation({showModal: true})
         });
-    }, [])
+
+        return unsubscribe;
+    }, [statusPermission, isGpsOn])
+
+    const firstUpdate = useRef(true);
+    useLayoutEffect(() => {
+        if (firstUpdate.current) {
+            firstUpdate.current = false;
+            return;
+        }
+
+        fetchLocation({showModal: true})
+    }, [statusPermission, isGpsOn]);
 
     useEffect(() => {
-        if(location.status == true && Object.keys(trail).length > 0){
+        const unsubscribe = navigation.addListener('focus', () => {
+            if(isGpsOn == true){
+                fetchPengerjaanTrail()
+            }
+        })
+
+        return unsubscribe
+    }, [isGpsOn])
+
+    useEffect(() => {
+        if(Object.keys(trail).length > 0){
+            if(isGpsOn == true){
+                loopCurrentLocation()
+            }
+
             setCenter(getCenter(trail.trail_task.map(val => {
                 return {
                     latitude: val.task.latitude,
                     longitude: val.task.longitude,
                 }
             })))
-        }
-    }, [location, trail])
 
-    useEffect(() => {
-        if(Object.keys(trail).length > 0){
             let tempJumlah = 0
             trail.trail_task.map(val => {
                 if(val.task.task_answer.length > 0){
@@ -90,7 +115,80 @@ const map = ({ navigation, route}) => {
             })
             setJumlahTaskDikerjakan(tempJumlah)
         }
-    }, [trail])
+    }, [isGpsOn, trail, showModalTask])
+
+    const loopCurrentLocation = async () => {
+        if(navigation.isFocused()){
+            if(isGpsOn && Object.keys(trail).length > 0){
+                await fetchCurrentLocation()
+                await saveCurrentLocation()
+            }
+            setTimeout(async function() {   
+                await loopCurrentLocation()
+            }, 10000)
+        }
+    }
+
+    const fetchCurrentLocation = async () => {
+        const response = await axiosGet({dispatch, route: 'trail/current-location',
+            config: {
+                headers: {
+                    token: user.token
+                },
+                params: {
+                    id_trail_user: trail.trail_user[0].id_trail_user,
+                }, 
+            },
+            isToast: false
+        })
+
+        if(response.status == 0){
+            errorDispatcher(dispatch, 'Gagal menyimpan data lokasi')
+            return
+        }
+        
+        if(response.data){
+            if(!showModalTask){
+                setUserOnMaps(response.data)
+            }
+        }
+    }
+
+    const saveCurrentLocation = async () => {
+        const response = await axiosPost({dispatch, route: 'trail/current-location/simpan',
+            headers: {
+                token: user.token
+            },
+            data: {
+                id_trail_user: trail.trail_user[0].id_trail_user,
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+            }, 
+            isToast: false
+        })
+
+        if(response.status == 0){
+            errorDispatcher(dispatch, response.message ? response.message : 'Gagal menyimpan data lokasi')
+        }
+    }
+
+    const fetchLocation = ({showModal = false}) => {
+        if(statusPermission){
+            if(isGpsOn){
+                requestLocation({dispatch})
+                if(showModal && isDenied){
+                    dispatch(setIsModalEnableGPS(false))
+                }
+            } else {
+                requestLocation({dispatch})
+                if(showModal && isDenied){
+                    dispatch(setIsModalEnableGPS(true))
+                }
+            }
+        } else {
+            hasLocationPermission({dispatch})
+        }
+    }
 
     const fetchPengerjaanTrail = async () => {
         setIsLoading(true)
@@ -128,7 +226,8 @@ const map = ({ navigation, route}) => {
             // alert(JSON.stringify(val.sequence))
             if(val.sequence == 1){
                 navigation.navigate('TaskQuestion', {
-                    trail_task: val
+                    trail_task: val,
+                    id_trail_user: trail.trail_user[0].id_trail_user
                 })
                 setIsVisibleBottomSheetTask(false)
                 return
@@ -151,32 +250,35 @@ const map = ({ navigation, route}) => {
                 if(sudah_dikerjakan.length > 0){
                     if(val.sequence <= (sudah_dikerjakan[(sudah_dikerjakan.length - 1)].sequence + 1)){
                         navigation.navigate('TaskQuestion', {
-                            trail_task: val
+                            trail_task: val,
+                            id_trail_user: trail.trail_user[0].id_trail_user
                         })
                         setIsVisibleBottomSheetTask(false)
                         return
                     } else {
-                        Alert.alert(`Kerjakan trail secara berurut`, 
-                            "Pengerjaan task pada trail ini harus dikerjakan secara berurutan")
+                        Alert.alert(`Kerjakan rute secara berurut`, 
+                            "Pengerjaan tugas pada rute ini harus dikerjakan secara berurutan")
                     }
                 } else {
                     if(val.sequence == 1){
                         navigation.navigate('TaskQuestion', {
-                            trail_task: val
+                            trail_task: val,
+                            id_trail_user: trail.trail_user[0].id_trail_user
                         })
                         setIsVisibleBottomSheetTask(false)
                     } else {
-                        Alert.alert("Kerjakan trail secara berurut", 
-                            "Pengerjaan task pada trail ini harus dikerjakan secara berurutan")
+                        Alert.alert("Kerjakan rute secara berurut", 
+                            "Pengerjaan tugas pada rute ini harus dikerjakan secara berurutan")
                     }
                 }
             } else {
-                Alert.alert("Kerjakan trail secara berurut", 
-                    "Pengerjaan task pada trail ini harus dikerjakan secara berurutan")
+                Alert.alert("Kerjakan rute secara berurut", 
+                    "Pengerjaan tugas pada rute ini harus dikerjakan secara berurutan")
             }
         } else {
             navigation.navigate('TaskQuestion', {
-                trail_task: val
+                trail_task: val,
+                id_trail_user: trail.trail_user[0].id_trail_user
             })
             setIsVisibleBottomSheetTask(false)
             return
@@ -209,9 +311,49 @@ const map = ({ navigation, route}) => {
     }
 
     const ModalListTask = () => {
+        if(showModalTask){
+
+            return <View style={{
+                position: 'absolute',
+                width,
+                height,
+                left: 0,
+                top: 0,
+                backgroundColor: 'rgba(40, 40, 40, 0.4)'
+            }}>
+                <View style={styles.centeredView}>
+                    <View style={styles.modalView}>
+                        <View style={{ width: '100%', paddingHorizontal: 16}}>
+                            <Text style={{ fontSize: RFValue(16, height), fontFamily: 'Poppins-Bold', paddingTop: 20, marginBottom: 14, color: colors.primary }}>
+                                { trail.nama }
+                            </Text>
+                        </View>
+                        { trail.trail_task.map((val, index) => 
+                            <ListItem key={index} bottomDivider style={{ width: '100%' }}>
+                                <ListItem.Content>
+                                    <ListItem.Title>
+                                        #{ val.sequence } { val.task.judul }
+                                    </ListItem.Title>
+                                </ListItem.Content>
+                            </ListItem>
+                        )}
+                        <Pressable
+                            style={[styles.button, styles.buttonClose]}
+                            onPress={() => {
+                                setShowModalTask(!showModalTask)
+                                setIsSpeedDialOpen(false)
+                            }}>
+                            <Text style={styles.textStyle}>Tutup</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        } else {
+            return null
+        }
         return (
             <Modal
-                animationType="slide"
+                animationType="none"
                 transparent={true}
                 visible={showModalTask}
                 onRequestClose={() => {
@@ -227,13 +369,11 @@ const map = ({ navigation, route}) => {
                         </View>
                         { trail.trail_task.map((val, index) => 
                             <ListItem key={index} bottomDivider style={{ width: '100%' }}>
-                                {/* <Icon name={item.icon} /> */}
                                 <ListItem.Content>
                                     <ListItem.Title>
-                                        { val.task.judul }
+                                        #{ val.sequence } { val.task.judul }
                                     </ListItem.Title>
                                 </ListItem.Content>
-                                <ListItem.Chevron />
                             </ListItem>
                         )}
                         <Pressable
@@ -256,7 +396,7 @@ const map = ({ navigation, route}) => {
         </View>
     }
 
-    if(Object.keys(trail).length > 0){
+    if(Object.keys(trail).length > 0 && isGpsOn){
         return (
             <View style={styles.container}>
                 <Header 
@@ -265,7 +405,7 @@ const map = ({ navigation, route}) => {
                         text: title,
                         style: {
                             fontFamily: 'Poppins-Bold',
-                            fontSize: RFValue(16, height),
+                            fontSize: RFValue(18, height),
                             color: colors.white,
                         }
                     }}
@@ -285,6 +425,8 @@ const map = ({ navigation, route}) => {
                             latitudeDelta: 0.09,
                             longitudeDelta: 0.09,
                         }}
+                        showsUserLocation={true}
+                        followUserLocation={true}
                     >   
                         { trail.is_sequence == 1 ?
                             <Polyline
@@ -299,19 +441,84 @@ const map = ({ navigation, route}) => {
                                 lineDashPattern={[10]}
                             />
                         : null }
-                        {trail.trail_task.map((val, index) => (
-                            <View key={index}>
+                        { userOnMaps.length > 0 ? 
+                            userOnMaps?.map((val, index) => (
+                                <Marker 
+                                    key={`userOnMaps_${index}`}
+                                    coordinate={{
+                                        latitude: parseFloat(val.trail_user_current_location_first.latitude),
+                                        longitude: parseFloat(val.trail_user_current_location_first.longitude),
+                                    }}
+                                >
+                                    <AutoHeightImage source={UserOnMapsIcon} width={20} />
+                                </Marker>
+                            )) : null
+                        }
+                        { trail.is_sequence == 1 ?
+                            trail.trail_task.map((val, index) => (
+                                val.sequence != 1 && val.sequence != totalTask ?
+                                    <Marker
+                                        key={`trailTask_${index}`}
+                                        coordinate={{ 
+                                            latitude: parseFloat(val.task.latitude),
+                                            longitude: parseFloat(val.task.longitude),
+                                        }}
+                                        title={`#${val.sequence} ${val.task.judul}`}
+                                        onPress={() => handleClickMarker(val)}
+                                    >
+                                        <AutoHeightImage source={val.task.task_answer.length > 0 ? MarkerGreen : MarkerOrange} width={20} />
+                                    </Marker>
+                                : null
+                            ))
+                        : trail.trail_task.map((val, index) => (
                                 <Marker
-                                    icon={val.task.task_answer.length > 0 ? MarkerGreen : MarkerOrange}
+                                    key={`trailTask_${index}`}
                                     coordinate={{ 
-                                        latitude: val.task.latitude,
-                                        longitude: val.task.longitude,
+                                        latitude: parseFloat(val.task.latitude),
+                                        longitude: parseFloat(val.task.longitude),
                                     }}
                                     title={`#${val.sequence} ${val.task.judul}`}
                                     onPress={() => handleClickMarker(val)}
-                                />
-                            </View>
-                        ))}
+                                >
+                                    <AutoHeightImage source={val.task.task_answer.length > 0 ? MarkerGreen : MarkerOrange} width={20} />
+                                </Marker>
+                        )) }
+                        { trail.is_sequence == 1 ?
+                            trail.trail_task.map((val, index) => (
+                                val.sequence == 1 ?
+                                    <Marker
+                                        key={`trailTask_${index}`}
+                                        coordinate={{ 
+                                            latitude: parseFloat(val.task.latitude),
+                                            longitude: parseFloat(val.task.longitude),
+                                        }}
+                                        title={`#${val.sequence} ${val.task.judul}`}
+                                        onPress={() => handleClickMarker(val)}
+                                    >
+                                        <AutoHeightImage style={{
+                                        }} source={val.task.task_answer.length > 0 ? StartGreen : StartOrange } width={34} />
+                                    </Marker>
+                                : null
+                            ))
+                        : null }
+                        { trail.is_sequence == 1 ?
+                            trail.trail_task.map((val, index) => (
+                                val.sequence == totalTask ?
+                                    <Marker
+                                        key={`trailTask_${index}`}
+                                        coordinate={{ 
+                                            latitude: parseFloat(val.task.latitude),
+                                            longitude: parseFloat(val.task.longitude),
+                                        }}
+                                        title={`#${val.sequence} ${val.task.judul}`}
+                                        onPress={() => handleClickMarker(val)}
+                                    >
+                                        <AutoHeightImage style={{
+                                        }} source={val.task.task_answer.length > 0 ? FinishGreen : FinishOrange } width={34} />
+                                    </Marker>
+                                : null
+                            ))
+                        :null }
                     </MapView>
                 )}
                 <ModalListTask />
@@ -321,6 +528,31 @@ const map = ({ navigation, route}) => {
                 >
                     { dataBottomSheetMask ?
                         <View style={{ backgroundColor: 'white', padding: 20 }}>
+                            <View style={{
+                                alignItems: 'flex-end',
+                                marginTop: -10
+                            }}>
+                                <Button 
+                                    onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${dataBottomSheetMask.task.latitude},${dataBottomSheetMask.task.longitude}`)} 
+                                    buttonStyle={{ marginBottom: 10, backgroundColor: colors.success, width: 'auto' }} 
+                                    title="Google Maps" 
+                                    titleStyle={{
+                                        fontSize: RFValue(12, height)
+                                    }}
+                                    icon={
+                                        <Icon
+                                            containerStyle={{
+                                                marginRight: 8
+                                            }}
+                                            name="map-marker-alt"
+                                            size={15}
+                                            color="white"
+                                            type="font-awesome-5"
+                                        />
+                                    }
+                                    />
+                            </View>
+                            <Card.Divider />
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 <Avatar
                                     size="medium"
@@ -338,7 +570,7 @@ const map = ({ navigation, route}) => {
                             </View>
                             <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'flex-end' }}>
                                 <Button onPress={handleTutupBottomSheet} title="Tutup" buttonStyle={{ backgroundColor: colors.grey3, marginRight: 10 }} style={{ width: 200 }} />
-                                <Button onPress={() => handleMenujuTugas(dataBottomSheetMask)} title="Menuju ke tugas" style={{ width: 200 }} />
+                                <Button onPress={() => handleMenujuTugas(dataBottomSheetMask)} title="Kerjakan" style={{ width: 200 }} />
                             </View>
                         </View>
                     : null }
@@ -409,6 +641,7 @@ const map = ({ navigation, route}) => {
                         marginBottom: 60
                     }}
                 />
+                <ModalEnableGPS dispatch={dispatch} isModalEnableGPS={isModalEnableGPS} />
             </View>
         )
     } else {
@@ -418,7 +651,7 @@ const map = ({ navigation, route}) => {
     }
 }
 
-const { width, height } = Dimensions.get('window')
+const { width, height } = Dimensions.get('screen')
 
 export default map
 

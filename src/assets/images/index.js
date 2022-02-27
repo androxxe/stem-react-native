@@ -6,5 +6,12 @@ import MarkerGreen from './marker_green.png'
 import LateTime from './late-time.png'
 import OnTime from './on-time.png'
 import MapIcon from './map.png'
+import UserOnMaps from './user_on_maps.png'
+import FinishGreen from './finish_green.png'
+import FinishOrange from './finish_orange.png'
+import StartOrange from './start_orange.png'
+import StartGreen from './start_green.png'
 
-export { logoSingleText, logo, singleLogo, MarkerOrange, MarkerGreen, LateTime, OnTime, MapIcon }
+export { logoSingleText, logo, singleLogo, MarkerOrange, MarkerGreen, LateTime, OnTime, MapIcon, UserOnMaps, 
+    FinishGreen, FinishOrange, StartOrange, StartGreen
+}

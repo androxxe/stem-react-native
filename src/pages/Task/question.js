@@ -194,7 +194,8 @@ const handleSubmitForm = async ({ setLoadingGlobal, dispatch, trailTask, values,
             }
         })
         if(!isSudahIsi){
-            errorDispatch(dispatch, 'Minimal memilih 1 opsi')    
+            errorDispatch(dispatch, 'Minimal memilih 1 opsi')  
+            dispatch(setLoadingGlobal(false))
             return
         }
 
@@ -220,10 +221,9 @@ const handleSubmitForm = async ({ setLoadingGlobal, dispatch, trailTask, values,
             ...answer
         }
     })
-    dispatch(setLoadingGlobal(false))
 
-    // alert(JSON.stringify(response))
     setTimeout(() => {
+        dispatch(setLoadingGlobal(false))
         navigation.goBack();
     }, 1000)
 }
@@ -239,11 +239,13 @@ const Question = ({ navigation, route }) => {
     const user = useSelector(state => state.user)
     const dispatch = useDispatch()
     const errorDispatch = useToastErrorDispatch()
+    const { location, statusPermission, isGpsOn, isDenied, isLoadingLocation, isModalEnableGPS } = useSelector(state => state.location)
 
     useEffect(() => {
         setIsLoading(true)
         setTrailTask(route.params.trail_task)
         setIsLoading(false)
+        loopCurrentLocation()
     }, [])
 
     useEffect(() => {
@@ -251,6 +253,34 @@ const Question = ({ navigation, route }) => {
             setTotalSoalFillTheBlank(trailTask.task.fill_the_blank_question.split("***").length - 1)
         }
     }, [trailTask])
+
+    const loopCurrentLocation = () => {
+        if(navigation.isFocused()){
+            saveCurrentLocation()
+            
+            setTimeout(function() {   
+                loopCurrentLocation()
+            }, 10000)
+        }
+    }
+
+    const saveCurrentLocation = async () => {
+        const response = await axiosPost({dispatch, route: 'trail/current-location/simpan',
+            headers: {
+                token: user.token
+            },
+            data: {
+                id_trail_user: route.params.id_trail_user,
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+            }, 
+            isToast: false
+        })
+
+        if(response.status == 0){
+            errorDispatch(dispatch, response.message ? response.message : 'Gagal menyimpan data lokasi')
+        }
+    }
 
     const Question = () => {
         if(trailTask.task.tipe_jawaban == 1){
@@ -314,21 +344,23 @@ const Question = ({ navigation, route }) => {
             </Text>
         } else if (trailTask.task.tipe_jawaban == 2){
             return trailTask.task.task_multiple_choice.map((val, index) => {
-                if(val.is_true == 1){
-                    return <View key={`list_${index}`}>
-                        <CheckBox
-                            center
-                            title={ val.nilai }
-                            iconType='font-awesome'
-                            checkedIcon='check'
-                            disabled={trailTask.task.task_answer.length > 0 ? true : false}
-                            checked={true}
-                            containerStyle={{ 
-                                alignItems: 'flex-start'
-                            }}
-                        />
-                    </View>
-                }
+                return <View key={`list_${index}`}>
+                    <CheckBox
+                        center
+                        title={ val.nilai }
+                        iconType='font-awesome'
+                        checkedIcon='check'
+                        iconStyle={{
+                            color: 'red'
+                        }}
+                        checkedColor={colors.grey2}
+                        disabled={trailTask.task.task_answer.length > 0 ? true : false}
+                        checked={val.is_true == 1 ? true : false}
+                        containerStyle={{ 
+                            alignItems: 'flex-start'
+                        }}
+                    />
+                </View>
             })
         } else if (trailTask.task.tipe_jawaban == 3){
             return <Text style={styles.question}>
@@ -447,7 +479,7 @@ const Question = ({ navigation, route }) => {
                             <Icon
                                 raised
                                 name='forward'
-                                type='font-awesome-5'
+                                type='font-awesome'
                                 color={colors.warning}
                                 reverse
                                 containerStyle={{ 
@@ -459,8 +491,8 @@ const Question = ({ navigation, route }) => {
                                         navigation.goBack()
                                     } else {
                                         Alert.alert(
-                                            "Keluar dari task",
-                                            "Apakah kamu yakin keluar dari task? kamu bisa lanjutkan lagi nanti",
+                                            "Keluar dari tugas",
+                                            "Apakah kamu yakin keluar dari tugas? kamu bisa lanjutkan lagi nanti",
                                             [
                                               {
                                                 text: "Batal",
