@@ -29,19 +29,19 @@ const axiosPost = async ({dispatch, route, data, headers, isToast = true}) => {
             };
         }
     } catch(err){
-        if(err.response?.data){
-            return {
-                status: err.response.data.status,
-                data: err.response.data.data,
-                message: err.response.data.message
-            }
-        }
-
         if(isToast){
             if(err.response?.data){
                 errorDispatcher(dispatch, err.response.data.message);
             } else {
                 errorDispatcher(dispatch, 'Gagal memuat data');
+            }
+        }
+
+        if(err.response?.data){
+            return {
+                status: err.response.data.status,
+                data: err.response.data.data,
+                message: err.response.data.message
             }
         }
         dispatch(setLoadingGlobal(false))

@@ -39,7 +39,6 @@ const Kelas = ({ navigation, route }) => {
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'flex-end',
-                marginRight: 4
             }}
             onPress={() => {
                 navigation.navigate('KelasTambah')
