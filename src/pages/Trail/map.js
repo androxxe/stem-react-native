@@ -390,6 +390,12 @@ const map = ({ navigation, route}) => {
         )
     } 
 
+    // return <>
+    //     <Text>asd</Text>
+    //     <Text>asd</Text>
+    //     <Text>{ JSON.stringify(trail.trail_user[0])}</Text>
+    // </>
+
     if(isLoading){
         return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -446,8 +452,8 @@ const map = ({ navigation, route}) => {
                                 <Marker 
                                     key={`userOnMaps_${index}`}
                                     coordinate={{
-                                        latitude: parseFloat(val.trail_user_current_location_first.latitude),
-                                        longitude: parseFloat(val.trail_user_current_location_first.longitude),
+                                        latitude: parseFloat(val.trail_user_current_location_first?.latitude),
+                                        longitude: parseFloat(val.trail_user_current_location_first?.longitude),
                                     }}
                                 >
                                     <AutoHeightImage source={UserOnMapsIcon} width={20} />
